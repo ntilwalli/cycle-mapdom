@@ -42,5 +42,11 @@
     "transform": [
       "babelify"
     ]
+  },
+  "jspm": {
+    "registry": "npm",
+    "dependencies": {
+      "virtual-mapdom": "github:ntilwalli/virtual-mapdom"
+    }
   }
 }
