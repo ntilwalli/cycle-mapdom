@@ -4,7 +4,8 @@
   "description": "CycleJS driver for virtual-mapdom",
   "main": "index.js",
   "scripts": {
-    "test": "browserify test/main.js -t babelify | testling"
+    "test": "browserify test/main.js -t babelify | testling",
+    "build": "babel -d dist --ignore node_modules ."
   },
   "repository": {
     "type": "git",
@@ -25,7 +26,6 @@
     "rx-dom": "^7.0.3",
     "virtual-mapdom": "file:///Users/ntilwalli/Development/cycle/virtual-mapdom"
   },
-  "typings": "./cycle-mapdom.d.ts",
   "devDependencies": {
     "babel-preset-es2015": "^6.3.13",
     "babelify": "^7.2.0",
