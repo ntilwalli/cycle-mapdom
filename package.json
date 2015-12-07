@@ -44,8 +44,9 @@
     ]
   },
   "jspm": {
-    "registry": "npm",
     "dependencies": {
+      "matches-selector": "npm:matches-selector",
+      "rx-dom": "npm:rx-dom",
       "virtual-mapdom": "github:ntilwalli/virtual-mapdom"
     }
   }
