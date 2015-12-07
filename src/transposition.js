@@ -1,4 +1,4 @@
-import * as Rx from 'rx-dom'
+import Rx from 'rx-dom'
 import {VNode} from 'virtual-dom'
 
 /**
