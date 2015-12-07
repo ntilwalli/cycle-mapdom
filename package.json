@@ -25,6 +25,7 @@
     "rx-dom": "^7.0.3",
     "virtual-mapdom": "file:///Users/ntilwalli/Development/cycle/virtual-mapdom"
   },
+  "typings": "./cycle-mapdom.d.ts",
   "devDependencies": {
     "babel-preset-es2015": "^6.3.13",
     "babelify": "^7.2.0",
