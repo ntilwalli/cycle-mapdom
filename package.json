@@ -4,8 +4,8 @@
   "description": "CycleJS driver for virtual-mapdom",
   "main": "./dist/index.js",
   "scripts": {
-    "test": "browserify test/main.js -t babelify | testling",
-    "build": "rm -rf dist; babel -d dist --ignore node_modules ."
+    "test": "browserify test/main.js -t [ babelify --presets [ es2015 ] ] | testling | tap-spec",
+    "build": "rm -rf dist; babel -presets es2015 -d dist --ignore node_modules ."
   },
   "repository": {
     "type": "git",
@@ -35,16 +35,6 @@
     "tape": "^4.2.2",
     "tape-catch": "^1.0.4",
     "testling": "^1.7.1"
-  },
-  "babel": {
-    "presets": [
-      "es2015"
-    ]
-  },
-  "browserify": {
-    "transform": [
-      "babelify"
-    ]
   },
   "jspm": {
     "dependencies": {
