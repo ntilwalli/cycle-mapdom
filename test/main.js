@@ -1,8 +1,7 @@
-import test from 'tape'
+import test from 'tape-catch'
 import Rx from 'rx-dom'
 import {VNode} from 'virtual-dom'
-import {makeMapDOMDriver} from '../'
-import {g_mapElementRegistry as elementRegistry} from '../src/cycle-mapdom'
+import {makeMapDOMDriver, g_mapElementRegistry as elementRegistry} from '../src/cycle-mapdom'
 
 test("Basic functionality including instantiating VDOM after element is created", t => {
   t.equals(typeof makeMapDOMDriver, 'function', "should be a function")
