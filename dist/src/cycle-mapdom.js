@@ -1,13 +1,36 @@
-// Importing 'rx-dom' imports 'rx' under the hood, so no need to
-import Rx from 'rx-dom';
-//import document from 'global/document'
-import { VNode, diff, patch } from 'virtual-dom';
-import { createMapOnElement, patchRecursive, render } from 'virtual-mapdom';
-import { transposeVTree } from './transposition';
+'use strict';
 
-import matchesSelector from 'matches-selector';
-import isArray from 'x-is-array';
-import { fromEvent } from './fromevent';
+var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; })(); // Importing 'rx-dom' imports 'rx' under the hood, so no need to
+
+//import document from 'global/document'
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.makeMapDOMDriver = exports.g_mapElementRegistry = undefined;
+
+var _rxDom = require('rx-dom');
+
+var _rxDom2 = _interopRequireDefault(_rxDom);
+
+var _virtualDom = require('virtual-dom');
+
+var _virtualMapdom = require('virtual-mapdom');
+
+var _transposition = require('./transposition');
+
+var _matchesSelector = require('matches-selector');
+
+var _matchesSelector2 = _interopRequireDefault(_matchesSelector);
+
+var _xIsArray = require('x-is-array');
+
+var _xIsArray2 = _interopRequireDefault(_xIsArray);
+
+var _fromevent = require('./fromevent');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 // // Try-catch to prevent unnecessary import of DOM-specifics in Node.js env:
 // try {
 //   matchesSelector = require(`matches-selector`)
@@ -15,16 +38,16 @@ import { fromEvent } from './fromevent';
 //   matchesSelector = () => {}
 // }
 
-const VDOM = {
-  diff: diff,
-  patch: patch
+var VDOM = {
+  diff: _virtualDom.diff,
+  patch: _virtualDom.patch
 };
 
-const g_MBAccessToken = "pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg";
-export const g_mapElementRegistry = {};
+var g_MBAccessToken = "pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg";
+var g_mapElementRegistry = exports.g_mapElementRegistry = {};
 
 function makeEmptyMapVDOMNode() {
-  return new VNode('map', {});
+  return new _virtualDom.VNode('map', {});
 }
 
 function makeEmptyMapDOMElement() {
@@ -40,9 +63,14 @@ function makeEmptyMapDOMElement() {
 
 function makeDiffAndPatchToElement$() {
 
-  return function diffAndPatchToElement$([oldVTree, newVTree]) {
-    if (typeof newVTree === `undefined`) {
-      return Rx.Observable.empty();
+  return function diffAndPatchToElement$(_ref) {
+    var _ref2 = _slicedToArray(_ref, 2);
+
+    var oldVTree = _ref2[0];
+    var newVTree = _ref2[1];
+
+    if (typeof newVTree === 'undefined') {
+      return _rxDom2.default.Observable.empty();
     }
 
     // console.log("OldVTree")
@@ -51,28 +79,28 @@ function makeDiffAndPatchToElement$() {
     // console.log(newVTree)
     /* eslint-disable */
 
-    const anchorId = getAnchorIdFromVTree(newVTree);
-    const proxyElement = g_mapElementRegistry[anchorId];
-    let diffInfo = VDOM.diff(oldVTree, newVTree);
+    var anchorId = getAnchorIdFromVTree(newVTree);
+    var proxyElement = g_mapElementRegistry[anchorId];
+    var diffInfo = VDOM.diff(oldVTree, newVTree);
 
     // console.log("Diff old vs new VDOM tree...")
     // console.log(diffInfo)
 
-    let rootElem = VDOM.patch(proxyElement.mapDOM, diffInfo, { render: render, patch: patchRecursive });
+    var rootElem = VDOM.patch(proxyElement.mapDOM, diffInfo, { render: _virtualMapdom.render, patch: _virtualMapdom.patchRecursive });
 
     /* eslint-enable */
 
-    return Rx.Observable.just(proxyElement.mapDOM);
+    return _rxDom2.default.Observable.just(proxyElement.mapDOM);
   };
 }
 
 function bufferWhile(source, selector, isRegulationMessage) {
-  return Rx.Observable.create(observer => {
+  return _rxDom2.default.Observable.create(function (observer) {
 
-    let buffer = [];
-    source.subscribe(x => {
-      let selectorVal = selector(x);
-      let regulator = isRegulationMessage(x);
+    var buffer = [];
+    source.subscribe(function (x) {
+      var selectorVal = selector(x);
+      var regulator = isRegulationMessage(x);
       if (selectorVal === false) {
         if (!regulator) {
           //console.log("Buffering value...")
@@ -84,13 +112,13 @@ function bufferWhile(source, selector, isRegulationMessage) {
         // }
       } else {
           //console.log("Allowing buffered values release...")
-          let bufferLen = buffer.length;
+          var bufferLen = buffer.length;
           if (bufferLen > 0) {
             //console.log("Buffered values exist...")
-            let swapBuffer = [];
-            let i = -1;
+            var swapBuffer = [];
+            var i = -1;
             while (++i < bufferLen) {
-              let val = buffer[i];
+              var val = buffer[i];
               // There could be multiple unrelated streams
               // aggregated in buffer where predicate is true for one
               // stream but not for others, need to recheck each
@@ -127,7 +155,7 @@ function getAnchorIdFromVTree(vtree) {
 }
 
 function makeSelectorFunction(isRegulationMessage) {
-  let rma = g_mapElementRegistry;
+  var rma = g_mapElementRegistry;
 
   function getDOMElement(x) {
     //console.log("Printing observation root...")
@@ -148,7 +176,7 @@ function makeSelectorFunction(isRegulationMessage) {
       //console.log("VTree message sent to selector...")
       //console.log(x)
       // Not a regulator message
-      let anchorId = getAnchorIdFromVTree(x);
+      var anchorId = getAnchorIdFromVTree(x);
       if (!anchorId) {
         throw new Error("No anchorId in sent VMapDOM node.");
       }
@@ -161,7 +189,7 @@ function makeSelectorFunction(isRegulationMessage) {
       // Check if we've seen this anchorId before, if not register it while
       // initializing the value (boolean indicating if anchor represents a
       // valid DOM element, i.e. element that is attached to DOM) to false
-      let firstTime = false;
+      var firstTime = false;
       if (!rma.hasOwnProperty(anchorId)) {
         //console.log("Registering record for anchor: " + anchorId)
         rma[anchorId] = false;
@@ -175,7 +203,7 @@ function makeSelectorFunction(isRegulationMessage) {
         // happened before the anchorId was registered so a test against
         // the registeredMapAnchors would have failedwhen the addedNode message
         // came)
-        const domEl = getDOMElement(anchorId);
+        var domEl = getDOMElement(anchorId);
         if (domEl) {
           if (firstTime) {
             //console.log("Anchor has already been attached, returning true...")
@@ -184,7 +212,7 @@ function makeSelectorFunction(isRegulationMessage) {
               console.log("Anchor is registered, was not attached but now is, returning true...");
             }
 
-          createMapOnElement(domEl, g_MBAccessToken, makeEmptyMapVDOMNode());
+          (0, _virtualMapdom.createMapOnElement)(domEl, g_MBAccessToken, makeEmptyMapVDOMNode());
           //console.dir(domEl)
           rma[anchorId] = domEl;
           return true;
@@ -201,12 +229,12 @@ function makeSelectorFunction(isRegulationMessage) {
     } else {
       //console.log("Regulation message sent to selector...")
       //console.log(x)
-      let anyAdded = false;
+      var anyAdded = false;
       // The message is from the MutationObserver, check all the keys in the
       // registeredMutationObserver. If a key exists then test if the element
       // exists in the DOM and set it's DOM state appropriately
       for (var key in rma) {
-        let inDOM = getDOMElement(key);
+        var inDOM = getDOMElement(key);
         //let testVal = inDOM ? "true" : "false"
         //console.log("Testing key: " + key + ", " + testVal )
         if (inDOM) {
@@ -215,7 +243,7 @@ function makeSelectorFunction(isRegulationMessage) {
           if (rma[key] === false) {
             //console.log("Transition made: " + key + ", added")
             //console.log("Adding map element registry...")
-            createMapOnElement(inDOM, g_MBAccessToken, makeEmptyMapVDOMNode());
+            (0, _virtualMapdom.createMapOnElement)(inDOM, g_MBAccessToken, makeEmptyMapVDOMNode());
             rma[key] = inDOM;
             anyAdded = true;
           }
@@ -236,40 +264,42 @@ function makeSelectorFunction(isRegulationMessage) {
 }
 
 function makeRegulatedRawRootElem$(vtree$) {
-  let moConfig = { childList: true, subtree: true };
+  var moConfig = { childList: true, subtree: true };
 
-  let regulation$ = Rx.DOM.fromMutationObserver(document, moConfig).concatMap(x => Rx.Observable.from(x)).filter(x => {
+  var regulation$ = _rxDom2.default.DOM.fromMutationObserver(document, moConfig).concatMap(function (x) {
+    return _rxDom2.default.Observable.from(x);
+  }).filter(function (x) {
     return x.addedNodes.length > 0 || x.removedNodes.length > 0;
   });
   //.doOnNext(x => {console.log("MutationRecord..."); console.log(x)})
 
-  return bufferWhile(Rx.Observable.merge(regulation$, vtree$), makeSelectorFunction(vdomRegulator), vdomRegulator);
+  return bufferWhile(_rxDom2.default.Observable.merge(regulation$, vtree$), makeSelectorFunction(vdomRegulator), vdomRegulator);
   //return Rx.Observable.merge(regulation$, vtree$)
 }
 
 function renderRawRootElem$(vtree$) {
 
-  let diffAndPatchToElement$ = makeDiffAndPatchToElement$();
+  var diffAndPatchToElement$ = makeDiffAndPatchToElement$();
 
   // The makeEmptyMapVDOMNode call below is replicated in the function
   // makeSelectorFunction.  If the line below is changed then the line
   // in that section should change too since the initial element of pairwise
   // needs to be mirrored in the actual initial state of the instantiated mapVDOM
-  return makeRegulatedRawRootElem$(vtree$).flatMapLatest(transposeVTree).startWith(makeEmptyMapVDOMNode()).pairwise().flatMap(diffAndPatchToElement$);
+  return makeRegulatedRawRootElem$(vtree$).flatMapLatest(_transposition.transposeVTree).startWith(makeEmptyMapVDOMNode()).pairwise().flatMap(diffAndPatchToElement$);
 }
 
 function makeEventsSelector(element$) {
   return function events(eventName) {
-    if (typeof eventName !== `string`) {
-      throw new Error(`DOM driver's events() expects argument to be a ` + `string representing the event type to listen for.`);
+    if (typeof eventName !== 'string') {
+      throw new Error('DOM driver\'s events() expects argument to be a ' + 'string representing the event type to listen for.');
     }
 
-    return element$.flatMapLatest(elements => {
+    return element$.flatMapLatest(function (elements) {
       //console.log("Resubscribing to event: ", eventName)
       if (elements.length === 0) {
-        return Rx.Observable.empty();
+        return _rxDom2.default.Observable.empty();
       }
-      return fromEvent(elements, eventName);
+      return (0, _fromevent.fromEvent)(elements, eventName);
     }).share();
   };
 }
@@ -277,23 +307,25 @@ function makeEventsSelector(element$) {
 function makeElementSelector(rootEl$) {
   return function select(selector) {
     //console.log("Element selector, select called with selector: ", selector)
-    if (typeof selector !== `string`) {
-      throw new Error(`DOM driver's select() expects the argument to be a ` + `string as a CSS selector`);
+    if (typeof selector !== 'string') {
+      throw new Error('DOM driver\'s select() expects the argument to be a ' + 'string as a CSS selector');
     }
 
-    let trimmedSelector = `${ selector }`.trim();
-    let element$ = selector.trim() === `:root` ? rootEl$ : rootEl$.map(x => {
+    var trimmedSelector = ('' + selector).trim();
+    var element$ = selector.trim() === ':root' ? rootEl$ : rootEl$.map(function (x) {
       //console.log("Reselecting elements: ", selector);
 
-      let array = isArray(x) ? x : [x];
-      return array.map(element => {
-        if (matchesSelector(element, trimmedSelector)) {
+      var array = (0, _xIsArray2.default)(x) ? x : [x];
+      return array.map(function (element) {
+        if ((0, _matchesSelector2.default)(element, trimmedSelector)) {
           return [element];
         } else {
-          let nodeList = element.querySelectorAll(trimmedSelector);
+          var nodeList = element.querySelectorAll(trimmedSelector);
           return Array.prototype.slice.call(nodeList);
         }
-      }).reduce((prev, curr) => prev.concat(curr), []);
+      }).reduce(function (prev, curr) {
+        return prev.concat(curr);
+      }, []);
     });
     //.doOnNext(x => console.log(x))
 
@@ -306,8 +338,8 @@ function makeElementSelector(rootEl$) {
 }
 
 function validateMapDOMDriverInput(vtree$) {
-  if (!vtree$ || typeof vtree$.subscribe !== `function`) {
-    throw new Error(`The DOM driver function expects as input an ` + `Observable of virtual DOM elements`);
+  if (!vtree$ || typeof vtree$.subscribe !== 'function') {
+    throw new Error('The DOM driver function expects as input an ' + 'Observable of virtual DOM elements');
   }
 }
 
@@ -317,16 +349,17 @@ function makeMapDOMDriver() {
 
     validateMapDOMDriverInput(vtree$);
 
-    let rootElem$ = renderRawRootElem$(vtree$).replay(null, 1);
+    var rootElem$ = renderRawRootElem$(vtree$).replay(null, 1);
 
-    let disposable = rootElem$.connect();
+    var disposable = rootElem$.connect();
 
     return {
       select: makeElementSelector(rootElem$),
-      dispose: () => disposable.dispose.bind(disposable)
+      dispose: function dispose() {
+        return disposable.dispose.bind(disposable);
+      }
     };
   };
 }
 
-export { makeMapDOMDriver };
-//# sourceMappingURL=cycle-mapdom.js.map
+exports.makeMapDOMDriver = makeMapDOMDriver;

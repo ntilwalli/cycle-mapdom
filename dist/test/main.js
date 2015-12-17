@@ -1,25 +1,40 @@
-import test from 'tape-catch';
-import Rx from 'rx-dom';
-import { VNode } from 'virtual-dom';
-import { makeMapDOMDriver, g_mapElementRegistry as elementRegistry } from '../src/cycle-mapdom';
+'use strict';
 
-test("Basic functionality including instantiating VDOM after element is created", t => {
-  t.equals(typeof makeMapDOMDriver, 'function', "should be a function");
+var _tapeCatch = require('tape-catch');
 
-  let rootEl = document.createElement("div");
+var _tapeCatch2 = _interopRequireDefault(_tapeCatch);
+
+var _rxDom = require('rx-dom');
+
+var _rxDom2 = _interopRequireDefault(_rxDom);
+
+var _virtualDom = require('virtual-dom');
+
+var _cycleMapdom = require('../src/cycle-mapdom');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj; }
+
+(0, _tapeCatch2.default)("Basic functionality including instantiating VDOM after element is created", function (t) {
+  t.equals(typeof _cycleMapdom.makeMapDOMDriver === 'undefined' ? 'undefined' : _typeof(_cycleMapdom.makeMapDOMDriver), 'function', "should be a function");
+
+  var rootEl = document.createElement("div");
   rootEl.setAttribute("id", "testId");
-  let bodyEl = document.body.appendChild(rootEl);
+  var bodyEl = document.body.appendChild(rootEl);
 
-  let testVMaps = [new VNode('map', { anchorId: "testId", centerZoom: { center: [4, 5], zoom: 5 } }), new VNode('map', { anchorId: "testId", centerZoom: { center: [4, 5], zoom: 5 } }, [new VNode('tileLayer', { tile: "testTile", attributes: { id: "testTile1" } })])];
+  var testVMaps = [new _virtualDom.VNode('map', { anchorId: "testId", centerZoom: { center: [4, 5], zoom: 5 } }), new _virtualDom.VNode('map', { anchorId: "testId", centerZoom: { center: [4, 5], zoom: 5 } }, [new _virtualDom.VNode('tileLayer', { tile: "testTile", attributes: { id: "testTile1" } })])];
 
-  let map$ = Rx.Observable.interval(100).take(2).map(x => testVMaps[x]);
+  var map$ = _rxDom2.default.Observable.interval(100).take(2).map(function (x) {
+    return testVMaps[x];
+  });
 
-  let outFunc = makeMapDOMDriver(rootEl);
-  t.equals(typeof outFunc, 'function', "should output a function");
-  let outVal = outFunc(map$);
+  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)(rootEl);
+  t.equals(typeof outFunc === 'undefined' ? 'undefined' : _typeof(outFunc), 'function', "should output a function");
+  var outVal = outFunc(map$);
   t.ok(outVal.select && outVal.dispose, "should output object with valid select and dispose properties");
 
-  setTimeout(() => {
+  setTimeout(function () {
     t.ok(rootEl.mapDOM, "should have valid mapDOM property on given element");
     t.end();
   }, 300);
@@ -27,57 +42,60 @@ test("Basic functionality including instantiating VDOM after element is created"
 
 // This is dependent test on the previous one since a map is already attached to
 // the document and has not been removed
-test("Allow two map streams at same time and removes anchor from registry when root element removed", t => {
-  t.equals(typeof makeMapDOMDriver, 'function', "should be a function");
+(0, _tapeCatch2.default)("Allow two map streams at same time and removes anchor from registry when root element removed", function (t) {
+  t.equals(typeof _cycleMapdom.makeMapDOMDriver === 'undefined' ? 'undefined' : _typeof(_cycleMapdom.makeMapDOMDriver), 'function', "should be a function");
 
-  let rootEl = document.createElement("div");
+  var rootEl = document.createElement("div");
 
   rootEl.setAttribute("id", "testId2");
 
-  let testVMaps = [new VNode('map', { anchorId: "testId2", centerZoom: { center: [4, 5], zoom: 5 } }), new VNode('map', { anchorId: "testId2", centerZoom: { center: [4, 5], zoom: 5 } }, [new VNode('tileLayer', { tile: "testTile", attributes: { id: "testTile2" } })])];
+  var testVMaps = [new _virtualDom.VNode('map', { anchorId: "testId2", centerZoom: { center: [4, 5], zoom: 5 } }), new _virtualDom.VNode('map', { anchorId: "testId2", centerZoom: { center: [4, 5], zoom: 5 } }, [new _virtualDom.VNode('tileLayer', { tile: "testTile", attributes: { id: "testTile2" } })])];
 
-  let map$ = Rx.Observable.interval(100).take(2).map(x => testVMaps[x]);
+  var map$ = _rxDom2.default.Observable.interval(100).take(2).map(function (x) {
+    return testVMaps[x];
+  });
 
-  let outFunc = makeMapDOMDriver(rootEl);
-  t.equals(typeof outFunc, 'function', "should output a function");
-  let outVal = outFunc(map$);
+  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)(rootEl);
+  t.equals(typeof outFunc === 'undefined' ? 'undefined' : _typeof(outFunc), 'function', "should output a function");
+  var outVal = outFunc(map$);
   t.ok(outVal.select && outVal.dispose, "should output object with valid select and dispose properties");
 
-  setTimeout(() => {
-    let bodyEl = document.body.appendChild(rootEl);
+  setTimeout(function () {
+    var bodyEl = document.body.appendChild(rootEl);
   }, 150);
 
-  setTimeout(() => {
+  setTimeout(function () {
     t.ok(rootEl.mapDOM, "should have valid mapDOM property on given element");
     document.body.removeChild(rootEl);
   }, 300);
 
-  setTimeout(() => {
-    t.notOk(elementRegistry.hasOwnProperty("testId2"), "anchor should not be registered after root element removal");
+  setTimeout(function () {
+    t.notOk(_cycleMapdom.g_mapElementRegistry.hasOwnProperty("testId2"), "anchor should not be registered after root element removal");
     t.end();
   }, 2000);
 });
 
-test("call to select returns a stream and select returns element based on selector", t => {
+(0, _tapeCatch2.default)("call to select returns a stream and select returns element based on selector", function (t) {
   t.plan(4);
-  let rootEl = document.createElement("div");
+  var rootEl = document.createElement("div");
   rootEl.setAttribute("id", "testId3");
-  let bodyEl = document.body.appendChild(rootEl);
+  var bodyEl = document.body.appendChild(rootEl);
 
-  let testVMaps = [new VNode('map', { anchorId: "testId3", centerZoom: { center: [4, 5], zoom: 5 } }), new VNode('map', { anchorId: "testId3", centerZoom: { center: [4, 5], zoom: 5 } }, [new VNode('tileLayer', { tile: "testTile", attributes: { id: "testTile3" } })])];
+  var testVMaps = [new _virtualDom.VNode('map', { anchorId: "testId3", centerZoom: { center: [4, 5], zoom: 5 } }), new _virtualDom.VNode('map', { anchorId: "testId3", centerZoom: { center: [4, 5], zoom: 5 } }, [new _virtualDom.VNode('tileLayer', { tile: "testTile", attributes: { id: "testTile3" } })])];
 
-  let map$ = Rx.Observable.interval(100).take(2).map(x => testVMaps[x]);
+  var map$ = _rxDom2.default.Observable.interval(100).take(2).map(function (x) {
+    return testVMaps[x];
+  });
 
-  let outFunc = makeMapDOMDriver();
-  let outVal = outFunc(map$);
-  t.equal(typeof outVal.select, 'function', "makeMapDOMDriver should return object with select property that is a function");
-  let elem$ = outVal.select("#testTile3").observable;
+  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)();
+  var outVal = outFunc(map$);
+  t.equal(_typeof(outVal.select), 'function', "makeMapDOMDriver should return object with select property that is a function");
+  var elem$ = outVal.select("#testTile3").observable;
   t.ok(elem$.subscribe, "elem$ should have subscribe function");
-  elem$.doOnNext(x => {
-    x.forEach(y => {
+  elem$.doOnNext(function (x) {
+    x.forEach(function (y) {
       t.equal(y.tagName, "TILELAYER", "selected element should be tileLayer");
       t.ok(y.instance, "element should have in attached instance property");
     });
   }).publish().refCount().subscribe();
 });
-//# sourceMappingURL=main.js.map
