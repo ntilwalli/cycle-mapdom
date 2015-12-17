@@ -1,26 +1,10 @@
-'use strict';
+import Rx from 'rx-dom';
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.fromEvent = fromEvent;
+const disposableCreate = Rx.Disposable.create;
+const CompositeDisposable = Rx.CompositeDisposable;
+const AnonymousObservable = Rx.AnonymousObservable;
 
-var _rxDom = require('rx-dom');
-
-var _rxDom2 = _interopRequireDefault(_rxDom);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var disposableCreate = _rxDom2.default.Disposable.create;
-var CompositeDisposable = _rxDom2.default.CompositeDisposable;
-var AnonymousObservable = _rxDom2.default.AnonymousObservable;
-
-function createListener(_ref) {
-  var element = _ref.element;
-  var eventName = _ref.eventName;
-  var handler = _ref.handler;
-  var useCapture = _ref.useCapture;
-
+function createListener({ element, eventName, handler, useCapture }) {
   if (element.instance && element.instance.addEventListener) {
     element.instance.addEventListener(eventName, handler);
     return disposableCreate(function removeEventListener() {
@@ -29,49 +13,46 @@ function createListener(_ref) {
     });
   }
 
-  throw new Error('No instance or listener found');
+  throw new Error(`No instance or listener found`);
 }
 
-function createEventListener(_ref2) {
-  var element = _ref2.element;
-  var eventName = _ref2.eventName;
-  var handler = _ref2.handler;
+function createEventListener({ element, eventName, handler }) {
+  const disposables = new CompositeDisposable();
 
-  var disposables = new CompositeDisposable();
-
-  var toStr = Object.prototype.toString;
-  var elementToString = toStr.call(element);
+  const toStr = Object.prototype.toString;
+  let elementToString = toStr.call(element);
   //console.log(toStr.call(element))
-  if (elementToString === '[object NodeList]' || elementToString === '[object HTMLCollection]') {
-    for (var i = 0, len = element.length; i < len; i++) {
+  if (elementToString === `[object NodeList]` || elementToString === `[object HTMLCollection]`) {
+    for (let i = 0, len = element.length; i < len; i++) {
       disposables.add(createEventListener({
         element: element.item(i),
-        eventName: eventName,
-        handler: handler }));
+        eventName,
+        handler }));
     }
-  } else if (elementToString === '[object Array]') {
-    for (var i = 0, len = element.length; i < len; i++) {
+  } else if (elementToString === `[object Array]`) {
+    for (let i = 0, len = element.length; i < len; i++) {
       disposables.add(createEventListener({
         element: element[i],
-        eventName: eventName,
-        handler: handler }));
+        eventName,
+        handler }));
     }
   } else if (element) {
-    disposables.add(createListener({ element: element, eventName: eventName, handler: handler }));
+    disposables.add(createListener({ element, eventName, handler }));
   }
   return disposables;
 }
 
-function fromEvent(element, eventName) {
+export function fromEvent(element, eventName) {
   //console.log("fromEvent...")
   //console.log(element)
   return new AnonymousObservable(function subscribe(observer) {
     return createEventListener({
-      element: element,
-      eventName: eventName,
+      element,
+      eventName,
       handler: function handler() {
         observer.onNext(arguments[0]);
       }
     });
   }).publish().refCount();
 }
+//# sourceMappingURL=fromevent.js.map
