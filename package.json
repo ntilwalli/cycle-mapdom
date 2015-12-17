@@ -35,7 +35,8 @@
     "tap-spec": "^4.1.1",
     "tape": "^4.2.2",
     "tape-catch": "^1.0.4",
-    "testling": "^1.7.1"
+    "testling": "^1.7.1",
+    "virtual-mapdom": "file:///Users/ntilwalli/Development/cycle/virtual-mapdom"
   },
   "jspm": {
     "dependencies": {
