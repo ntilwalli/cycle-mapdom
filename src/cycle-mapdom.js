@@ -51,17 +51,17 @@ function makeDiffAndPatchToElement$() {
     /* eslint-disable */
 
     const anchorId = getAnchorIdFromVTree(newVTree)
-    const anchorElement = g_mapElementRegistry[anchorId]
+    const proxyElement = g_mapElementRegistry[anchorId]
     let diffInfo = VDOM.diff(oldVTree, newVTree)
 
     // console.log("Diff old vs new VDOM tree...")
     // console.log(diffInfo)
 
-    let rootElem = VDOM.patch(anchorElement, diffInfo, {render: render, patch: patchRecursive})
+    let rootElem = VDOM.patch(proxyElement.mapDOM, diffInfo, {render: render, patch: patchRecursive})
 
     /* eslint-enable */
 
-    return Rx.Observable.just(anchorElement.mapDOM)
+    return Rx.Observable.just(proxyElement.mapDOM)
   }
 }
 
@@ -349,4 +349,3 @@ function makeMapDOMDriver() {
 export {
   makeMapDOMDriver,
 }
-
