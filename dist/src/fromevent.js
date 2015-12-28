@@ -22,6 +22,8 @@ function createListener(_ref) {
   var useCapture = _ref.useCapture;
 
   if (element.instance && element.instance.addEventListener) {
+    //console.log(`Adding event listener: ${eventName}`)
+    //console.log(element)
     element.instance.addEventListener(eventName, handler);
     return disposableCreate(function removeEventListener() {
       //console.log("eventListener disposable called: ", eventName)
@@ -73,5 +75,5 @@ function fromEvent(element, eventName) {
         observer.onNext(arguments[0]);
       }
     });
-  }).publish().refCount();
+  }).share();
 }

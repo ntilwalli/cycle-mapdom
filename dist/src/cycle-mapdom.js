@@ -288,6 +288,23 @@ function renderRawRootElem$(vtree$) {
   return makeRegulatedRawRootElem$(vtree$).flatMapLatest(_transposition.transposeVTree).startWith(makeEmptyMapVDOMNode()).pairwise().flatMap(diffAndPatchToElement$);
 }
 
+function isolateSource(source, scope) {
+  return source.select(".cycle-scope-" + scope);
+}
+
+function isolateSink(sink, scope) {
+  return sink.map(function (vtree) {
+    var _vtree$properties$className2 = vtree.properties.className;
+    var vtreeClass = _vtree$properties$className2 === undefined ? "" : _vtree$properties$className2;
+
+    if (vtreeClass.indexOf("cycle-scope-" + scope) === -1) {
+      var c = (vtreeClass + " cycle-scope-" + scope).trim();
+      vtree.properties.className = c;
+    }
+    return vtree;
+  });
+}
+
 function makeEventsSelector(element$) {
   return function events(eventName) {
     if (typeof eventName !== 'string') {
@@ -357,7 +374,9 @@ function makeMapDOMDriver() {
       select: makeElementSelector(rootElem$),
       dispose: function dispose() {
         return disposable.dispose.bind(disposable);
-      }
+      },
+      isolateSource: isolateSource,
+      isolateSink: isolateSink
     };
   };
 }
