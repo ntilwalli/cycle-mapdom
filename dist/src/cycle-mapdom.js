@@ -361,8 +361,9 @@ function validateMapDOMDriverInput(vtree$) {
   }
 }
 
-function makeMapDOMDriver() {
-  if (!accessToken) throw new Error('MapDOMDriver requires an access token.');
+function makeMapDOMDriver(accessToken) {
+  if (!accessToken || typeof accessToken !== 'string' && !(accessToken instanceof String)) throw new Error('MapDOMDriver requires an access token.');
+
   g_MBAccessToken = accessToken;
 
   return function mapDomDriver(vtree$, driverName) {

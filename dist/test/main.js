@@ -18,6 +18,9 @@ function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.const
 
 (0, _tapeCatch2.default)("Basic functionality including instantiating VDOM after element is created", function (t) {
   t.equals(typeof _cycleMapdom.makeMapDOMDriver === 'undefined' ? 'undefined' : _typeof(_cycleMapdom.makeMapDOMDriver), 'function', "should be a function");
+  t.throws(function () {
+    return (0, _cycleMapdom.makeMapDOMDriver)();
+  }, 'should throw when missing accessToken');
 
   var rootEl = document.createElement("div");
   rootEl.setAttribute("id", "testId");
@@ -29,7 +32,7 @@ function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.const
     return testVMaps[x];
   });
 
-  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)(rootEl);
+  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)("pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg");
   t.equals(typeof outFunc === 'undefined' ? 'undefined' : _typeof(outFunc), 'function', "should output a function");
   var outVal = outFunc(map$);
   t.ok(outVal.select && outVal.dispose, "should output object with valid select and dispose properties");
@@ -43,7 +46,6 @@ function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.const
 // This is dependent test on the previous one since a map is already attached to
 // the document and has not been removed
 (0, _tapeCatch2.default)("Allow two map streams at same time and removes anchor from registry when root element removed", function (t) {
-  t.equals(typeof _cycleMapdom.makeMapDOMDriver === 'undefined' ? 'undefined' : _typeof(_cycleMapdom.makeMapDOMDriver), 'function', "should be a function");
 
   var rootEl = document.createElement("div");
 
@@ -55,7 +57,7 @@ function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.const
     return testVMaps[x];
   });
 
-  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)(rootEl);
+  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)("pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg");
   t.equals(typeof outFunc === 'undefined' ? 'undefined' : _typeof(outFunc), 'function', "should output a function");
   var outVal = outFunc(map$);
   t.ok(outVal.select && outVal.dispose, "should output object with valid select and dispose properties");
@@ -87,7 +89,7 @@ function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.const
     return testVMaps[x];
   });
 
-  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)();
+  var outFunc = (0, _cycleMapdom.makeMapDOMDriver)('pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg');
   var outVal = outFunc(map$);
   t.equal(_typeof(outVal.select), 'function', "makeMapDOMDriver should return object with select property that is a function");
   var elem$ = outVal.select("#testTile3").observable;
