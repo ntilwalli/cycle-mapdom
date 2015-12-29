@@ -20,7 +20,7 @@ const VDOM = {
   patch: patch
 }
 
-const g_MBAccessToken = "pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg"
+let g_MBAccessToken
 export const g_mapElementRegistry = {}
 
 function makeEmptyMapVDOMNode() {
@@ -346,7 +346,10 @@ function validateMapDOMDriverInput(vtree$) {
   }
 }
 
-function makeMapDOMDriver() {
+function makeMapDOMDriver(accessToken) {
+  if (!accessToken || (typeof(accessToken) !== 'string' && !(accessToken instanceof String))) throw new Error(`MapDOMDriver requires an access token.`)
+
+  g_MBAccessToken = accessToken
 
   return function mapDomDriver(vtree$, driverName) {
 

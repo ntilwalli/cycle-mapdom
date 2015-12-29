@@ -43,7 +43,7 @@ var VDOM = {
   patch: _virtualDom.patch
 };
 
-var g_MBAccessToken = "pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg";
+var g_MBAccessToken = undefined;
 var g_mapElementRegistry = exports.g_mapElementRegistry = {};
 
 function makeEmptyMapVDOMNode() {
@@ -362,6 +362,8 @@ function validateMapDOMDriverInput(vtree$) {
 }
 
 function makeMapDOMDriver() {
+  if (!accessToken) throw new Error('MapDOMDriver requires an access token.');
+  g_MBAccessToken = accessToken;
 
   return function mapDomDriver(vtree$, driverName) {
 

@@ -5,6 +5,7 @@ import {makeMapDOMDriver, g_mapElementRegistry as elementRegistry} from '../src/
 
 test("Basic functionality including instantiating VDOM after element is created", t => {
   t.equals(typeof makeMapDOMDriver, 'function', "should be a function")
+  t.throws(() => makeMapDOMDriver(), `should throw when missing accessToken`)
 
   let rootEl = document.createElement("div")
   rootEl.setAttribute("id", "testId")
@@ -20,7 +21,7 @@ test("Basic functionality including instantiating VDOM after element is created"
 
   let map$ = Rx.Observable.interval(100).take(2).map(x => testVMaps[x])
 
-  let outFunc = makeMapDOMDriver(rootEl)
+  let outFunc = makeMapDOMDriver("pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg")
   t.equals(typeof outFunc, 'function', "should output a function")
   let outVal = outFunc(map$)
   t.ok(outVal.select && outVal.dispose, "should output object with valid select and dispose properties")
@@ -37,7 +38,6 @@ test("Basic functionality including instantiating VDOM after element is created"
 // This is dependent test on the previous one since a map is already attached to
 // the document and has not been removed
 test("Allow two map streams at same time and removes anchor from registry when root element removed", t => {
-  t.equals(typeof makeMapDOMDriver, 'function', "should be a function")
 
   let rootEl = document.createElement("div")
 
@@ -52,7 +52,7 @@ test("Allow two map streams at same time and removes anchor from registry when r
 
   let map$ = Rx.Observable.interval(100).take(2).map(x => testVMaps[x])
 
-  let outFunc = makeMapDOMDriver(rootEl)
+  let outFunc = makeMapDOMDriver("pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg")
   t.equals(typeof outFunc, 'function', "should output a function")
   let outVal = outFunc(map$)
   t.ok(outVal.select && outVal.dispose, "should output object with valid select and dispose properties")
@@ -89,7 +89,7 @@ test("call to select returns a stream and select returns element based on select
 
   let map$ = Rx.Observable.interval(100).take(2).map(x => testVMaps[x])
 
-  let outFunc = makeMapDOMDriver()
+  let outFunc = makeMapDOMDriver(`pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg`)
   let outVal = outFunc(map$)
   t.equal(typeof outVal.select, 'function', "makeMapDOMDriver should return object with select property that is a function")
   let elem$ = outVal.select("#testTile3").observable
