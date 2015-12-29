@@ -294,12 +294,13 @@ function isolateSource(source, scope) {
 
 function isolateSink(sink, scope) {
   return sink.map(function (vtree) {
-    var _vtree$properties$className2 = vtree.properties.className;
-    var vtreeClass = _vtree$properties$className2 === undefined ? "" : _vtree$properties$className2;
+    vtree.properties = vtree.properties || {};
+    vtree.properties.attributes = vtree.properties.attributes || {};
+    var vtreeClass = vtree.properties.attributes.class === undefined ? '' : vtree.properties.attributes.class;
 
     if (vtreeClass.indexOf("cycle-scope-" + scope) === -1) {
       var c = (vtreeClass + " cycle-scope-" + scope).trim();
-      vtree.properties.className = c;
+      vtree.properties.attributes.class = c;
     }
     return vtree;
   });
