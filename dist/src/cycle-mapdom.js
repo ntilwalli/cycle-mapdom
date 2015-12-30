@@ -44,10 +44,12 @@ var VDOM = {
 };
 
 var g_MBAccessToken = undefined;
+var g_MBMapOptions = undefined;
+
 var g_mapElementRegistry = exports.g_mapElementRegistry = {};
 
-function makeEmptyMapVDOMNode() {
-  return new _virtualDom.VNode('map', {});
+function makeEmptyMapVDOMNode(options) {
+  return new _virtualDom.VNode('map', { options: options });
 }
 
 function makeEmptyMapDOMElement() {
@@ -212,7 +214,7 @@ function makeSelectorFunction(isRegulationMessage) {
               console.log("Anchor is registered, was not attached but now is, returning true...");
             }
 
-          (0, _virtualMapdom.createMapOnElement)(domEl, g_MBAccessToken, makeEmptyMapVDOMNode());
+          (0, _virtualMapdom.createMapOnElement)(domEl, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions));
           //console.dir(domEl)
           rma[anchorId] = domEl;
           return true;
@@ -243,7 +245,7 @@ function makeSelectorFunction(isRegulationMessage) {
           if (rma[key] === false) {
             //console.log("Transition made: " + key + ", added")
             //console.log("Adding map element registry...")
-            (0, _virtualMapdom.createMapOnElement)(inDOM, g_MBAccessToken, makeEmptyMapVDOMNode());
+            (0, _virtualMapdom.createMapOnElement)(inDOM, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions));
             rma[key] = inDOM;
             anyAdded = true;
           }
@@ -361,10 +363,11 @@ function validateMapDOMDriverInput(vtree$) {
   }
 }
 
-function makeMapDOMDriver(accessToken) {
+function makeMapDOMDriver(accessToken, options) {
   if (!accessToken || typeof accessToken !== 'string' && !(accessToken instanceof String)) throw new Error('MapDOMDriver requires an access token.');
 
   g_MBAccessToken = accessToken;
+  g_MBMapOptions = options || {};
 
   return function mapDomDriver(vtree$, driverName) {
 

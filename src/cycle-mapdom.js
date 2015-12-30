@@ -21,15 +21,18 @@ const VDOM = {
 }
 
 let g_MBAccessToken
+let g_MBMapOptions
+
 export const g_mapElementRegistry = {}
 
-function makeEmptyMapVDOMNode() {
-  return new VNode('map', {})
+function makeEmptyMapVDOMNode(options) {
+  return new VNode('map', {options})
 }
 
 function makeEmptyMapDOMElement() {
   return document.createElement('map')
 }
+
 
 // function Element(element) {
 //   const options = { zoomControl: false }
@@ -64,8 +67,6 @@ function makeDiffAndPatchToElement$() {
     return Rx.Observable.just(proxyElement.mapDOM)
   }
 }
-
-
 
 function bufferWhile(source, selector, isRegulationMessage) {
   return Rx.Observable.create((observer) => {
@@ -189,7 +190,7 @@ function makeSelectorFunction(isRegulationMessage) {
             console.log("Anchor is registered, was not attached but now is, returning true...")
           }
 
-          createMapOnElement(domEl, g_MBAccessToken, makeEmptyMapVDOMNode())
+          createMapOnElement(domEl, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
           //console.dir(domEl)
           rma[anchorId] = domEl
           return true
@@ -220,7 +221,7 @@ function makeSelectorFunction(isRegulationMessage) {
           if (rma[key] === false ) {
             //console.log("Transition made: " + key + ", added")
             //console.log("Adding map element registry...")
-            createMapOnElement(inDOM, g_MBAccessToken, makeEmptyMapVDOMNode())
+            createMapOnElement(inDOM, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
             rma[key] = inDOM
             anyAdded = true
           }
@@ -346,10 +347,11 @@ function validateMapDOMDriverInput(vtree$) {
   }
 }
 
-function makeMapDOMDriver(accessToken) {
+function makeMapDOMDriver(accessToken, options) {
   if (!accessToken || (typeof(accessToken) !== 'string' && !(accessToken instanceof String))) throw new Error(`MapDOMDriver requires an access token.`)
 
   g_MBAccessToken = accessToken
+  g_MBMapOptions = options || {}
 
   return function mapDomDriver(vtree$, driverName) {
 
