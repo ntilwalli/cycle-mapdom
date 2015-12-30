@@ -287,7 +287,7 @@ function renderRawRootElem$(vtree$) {
   // makeSelectorFunction.  If the line below is changed then the line
   // in that section should change too since the initial element of pairwise
   // needs to be mirrored in the actual initial state of the instantiated mapVDOM
-  return makeRegulatedRawRootElem$(vtree$).flatMapLatest(_transposition.transposeVTree).startWith(makeEmptyMapVDOMNode()).pairwise().flatMap(diffAndPatchToElement$);
+  return makeRegulatedRawRootElem$(vtree$).flatMapLatest(_transposition.transposeVTree).startWith(makeEmptyMapVDOMNode(g_MBMapOptions)).pairwise().flatMap(diffAndPatchToElement$);
 }
 
 function isolateSource(source, scope) {

@@ -265,7 +265,7 @@ function renderRawRootElem$(vtree$) {
   // needs to be mirrored in the actual initial state of the instantiated mapVDOM
   return makeRegulatedRawRootElem$(vtree$)
     .flatMapLatest(transposeVTree)
-    .startWith(makeEmptyMapVDOMNode())
+    .startWith(makeEmptyMapVDOMNode(g_MBMapOptions))
     .pairwise()
     .flatMap(diffAndPatchToElement$)
 }
