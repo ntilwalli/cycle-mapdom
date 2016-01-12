@@ -156,7 +156,13 @@ function makeSelectorFunction(isRegulationMessage) {
       // Not a regulator message
       let anchorId = getAnchorIdFromVTree(x)
       if(!anchorId) {
-        throw new Error("No anchorId in sent VMapDOM node.")
+        // For some reason console.error is not called from tape...
+        console.log('WARNING: No anchorId given in VTree. AnchorId is required for map to be created.')
+        // Should never throw an exception from a subscribe function so commenting, also because
+        // exception is not being passed up all the way and is causing tape/testling to hang when thrown.
+        // That should not happen but I don't know which layer is the issue, RxJS, testling or tap... don't know which,
+        // but I'm pretty sure it shouldn't cause a hang... leaving here to investigate later...
+        //throw new Error("No anchorId in sent VMapDOM node.")
       }
 
       // We can only operate on a map that is attached to a valid DOM element.
