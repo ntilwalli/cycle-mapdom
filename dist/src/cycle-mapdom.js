@@ -1,13 +1,13 @@
 'use strict';
 
-var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; })(); // Importing 'rx-dom' imports 'rx' under the hood, so no need to
-
-//import document from 'global/document'
-
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.makeMapDOMDriver = exports.g_mapElementRegistry = undefined;
+
+var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; })(); // Importing 'rx-dom' imports 'rx' under the hood, so no need to
+
+//import document from 'global/document'
 
 var _rxDom = require('rx-dom');
 
@@ -249,7 +249,7 @@ function makeSelectorFunction(isRegulationMessage) {
           // If it's in the DOM but the registration is false, set it
           // to true, and return a message indicating which key was added
           if (rma[key] === false) {
-            //console.log("Transition made: " + key + ", added")
+            console.log("Transition made: " + key + ", added");
             //console.log("Adding map element registry...")
             (0, _virtualMapdom.createMapOnElement)(inDOM, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions));
             rma[key] = inDOM;
@@ -257,7 +257,7 @@ function makeSelectorFunction(isRegulationMessage) {
           }
         } else {
           if (rma[key] !== false) {
-            //console.log("Transition made: " + key + ", removed")
+            console.log("Transition made: " + key + ", removed");
             //console.log("Removing key from map element registry...")
             delete rma[key];
           }
@@ -272,17 +272,38 @@ function makeSelectorFunction(isRegulationMessage) {
 }
 
 function makeRegulatedRawRootElem$(vtree$) {
-  var moConfig = { childList: true, subtree: true };
 
-  var regulation$ = _rxDom2.default.DOM.fromMutationObserver(document, moConfig).concatMap(function (x) {
-    return _rxDom2.default.Observable.from(x);
-  }).filter(function (x) {
-    return x.addedNodes.length > 0 || x.removedNodes.length > 0;
+  var g_registeredAnchorId = undefined;
+  var g_registeredElement = undefined;
+  var sharedVTree$ = vtree$.shareReplay(1);
+  var anchorRegistration$ = sharedVTree$.do(function (vtree) {
+    g_registeredAnchorId = getAnchorIdFromVTree(vtree);
   });
-  //.doOnNext(x => {console.log("MutationRecord..."); console.log(x)})
 
-  return bufferWhile(_rxDom2.default.Observable.merge(regulation$, vtree$), makeSelectorFunction(vdomRegulator), vdomRegulator);
-  //return Rx.Observable.merge(regulation$, vtree$)
+  var mutationObserverConfig = { childList: true, subtree: true };
+  var elementRegistration$ = _rxDom2.default.DOM.fromMutationObserver(document, mutationObserverConfig);
+
+  //.do(x => console.log(`mutation observed`))
+  //.map(x => g_registeredElement = g_registeredAnchorId && document.getElementById(registeredAnchorId))
+
+  var regulation$ = _rxDom2.default.Observable.merge(anchorRegistration$, elementRegistration$).map(function () {
+    return g_registeredAnchorId && document.getElementById(g_registeredAnchorId);
+  }).distinctUntilChanged().filter(function (element) {
+    if (element) {
+      g_registeredElement = element;
+      (0, _virtualMapdom.createMapOnElement)(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions));
+      return true;
+    } else {
+      if (g_registeredElement) {
+        (0, _virtualMapdom.removeMapFromElement)(g_registeredElement);
+      }
+      return false;
+    }
+  }).flatMapLatest(function (anchorAvailable) {
+    return anchorAvailable ? sharedVTree$ : _rxDom2.default.Observable.empty();
+  });
+
+  return regulation$;
 }
 
 function renderRawRootElem$(vtree$) {

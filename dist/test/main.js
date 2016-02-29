@@ -90,11 +90,14 @@ function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.const
   });
 
   var outFunc = (0, _cycleMapdom.makeMapDOMDriver)('pk.eyJ1IjoibXJyZWRlYXJzIiwiYSI6IjQtVVRTZkEifQ.ef_cKBTmj8rSr7VypppZdg');
-  var outVal = outFunc(map$);
+  var outVal = outFunc(map$.do(function (x) {
+    return console.log('Hidy ho');
+  }));
   t.equal(_typeof(outVal.select), 'function', "makeMapDOMDriver should return object with select property that is a function");
   var elem$ = outVal.select("#testTile3").observable;
   t.ok(elem$.subscribe, "elem$ should have subscribe function");
   elem$.doOnNext(function (x) {
+    console.log('Hello');
     x.forEach(function (y) {
       t.equal(y.tagName, "TILELAYER", "selected element should be tileLayer");
       t.ok(y.instance, "element should have in attached instance property");

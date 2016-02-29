@@ -2,7 +2,7 @@
 import Rx from 'rx-dom'
 //import document from 'global/document'
 import {VNode, diff, patch} from 'virtual-dom'
-import {createMapOnElement, patchRecursive, render} from 'virtual-mapdom'
+import {createMapOnElement, removeMapFromElement, getMapFromElement as getMapDOMFromElement, patchRecursive, render} from 'virtual-mapdom'
 import {transposeVTree} from './transposition'
 
 import matchesSelector from 'matches-selector'
@@ -23,7 +23,8 @@ const VDOM = {
 let g_MBAccessToken
 let g_MBMapOptions
 
-export const g_mapElementRegistry = {}
+
+let g_registeredElement
 
 function makeEmptyMapVDOMNode(options) {
   return new VNode('map', {options})
@@ -54,211 +55,61 @@ function makeDiffAndPatchToElement$() {
     /* eslint-disable */
 
     const anchorId = getAnchorIdFromVTree(newVTree)
-    const proxyElement = g_mapElementRegistry[anchorId]
+    const mapDOM = getMapDOMFromElement(g_registeredElement)
     let diffInfo = VDOM.diff(oldVTree, newVTree)
 
     // console.log("Diff old vs new VDOM tree...")
     // console.log(diffInfo)
 
-    let rootElem = VDOM.patch(proxyElement.mapDOM, diffInfo, {render: render, patch: patchRecursive})
+
+    let rootElem = VDOM.patch(mapDOM, diffInfo, {render: render, patch: patchRecursive})
 
     /* eslint-enable */
 
-    return Rx.Observable.just(proxyElement.mapDOM)
+    return Rx.Observable.just(mapDOM)
   }
-}
-
-function bufferWhile(source, selector, isRegulationMessage) {
-  return Rx.Observable.create((observer) => {
-
-    let buffer = []
-    source.subscribe(
-      x => {
-        let selectorVal = selector(x)
-        let regulator = isRegulationMessage(x)
-        if(selectorVal === false) {
-          if(!regulator) {
-            //console.log("Buffering value...")
-            //console.log(x)
-            buffer.push(x)
-          }
-          // else {
-          //   console.log("Skipping extraneous regulation message...")
-          // }
-        } else {
-          //console.log("Allowing buffered values release...")
-          let bufferLen = buffer.length
-          if(bufferLen > 0) {
-            //console.log("Buffered values exist...")
-            let swapBuffer = []
-            let i = -1
-            while(++i < bufferLen) {
-              let val = buffer[i]
-              // There could be multiple unrelated streams
-              // aggregated in buffer where predicate is true for one
-              // stream but not for others, need to recheck each
-              // buffered entry before releasing
-              if(selector(val)) {
-                //console.log("Releasing buffered value: " + JSON.stringify(val))
-                observer.onNext(val)
-              } else {
-                //console.log("Not releasing buffered value: " + JSON.stringify(val))
-                swapBuffer.push(val)
-              }
-            }
-
-            buffer = swapBuffer
-          }
-
-          if(!regulator) {
-            //console.log("Passing through trigger message...")
-            observer.onNext(x)
-          } else {
-            //console.log("Filtering out regulation message for onNext call...")
-          }
-        }
-      },
-      observer.onError.bind(observer),
-      observer.onCompleted.bind(observer)
-    )
-  })
-}
-
-function vdomRegulator(x) {
-  return x instanceof MutationRecord
 }
 
 function getAnchorIdFromVTree(vtree) {
   return vtree.properties.anchorId
 }
 
-function makeSelectorFunction(isRegulationMessage) {
-  let rma = g_mapElementRegistry
-
-  function getDOMElement(x) {
-    //console.log("Printing observation root...")
-    //console.dir(observationRoot)
-    return document.getElementById(x)
-  }
-
-  // This function will be called whenever a node is added or removed from the
-  // DOM or when a new map state is sent
-  return function selectorFunction(x) {
-
-    //console.log("Calling selectorFunction...")
-
-    // If it's not a regulator message then it's a VDOM message and
-    // the root vdom element should always have an anchorId propery
-    // (to-be-attached or attached map)
-    if(!isRegulationMessage(x)) {
-      //console.log("VTree message sent to selector...")
-      //console.log(x)
-      // Not a regulator message
-      let anchorId = getAnchorIdFromVTree(x)
-      if(!anchorId) {
-        // For some reason console.error is not called from tape...
-        console.log('WARNING: No anchorId given in VTree. AnchorId is required for map to be created.')
-        // Should never throw an exception from a subscribe function so commenting, also because
-        // exception is not being passed up all the way and is causing tape/testling to hang when thrown.
-        // That should not happen but I don't know which layer is the issue, RxJS, testling or tap... don't know which,
-        // but I'm pretty sure it shouldn't cause a hang... leaving here to investigate later...
-        //throw new Error("No anchorId in sent VMapDOM node.")
-      }
-
-      // We can only operate on a map that is attached to a valid DOM element.
-      // There could be a period of time where we start sending map state
-      // for a map that is anchored to an element that is not created in the
-      // DOM yet.
-
-      // Check if we've seen this anchorId before, if not register it while
-      // initializing the value (boolean indicating if anchor represents a
-      // valid DOM element, i.e. element that is attached to DOM) to false
-      let firstTime = false
-      if(!rma.hasOwnProperty(anchorId)) {
-        //console.log("Registering record for anchor: " + anchorId)
-        rma[anchorId] = false
-        firstTime = true
-      }
-
-      // Check the registeredMapAnchor state, if true, then element is
-      // registered and map operations can commence
-      if(rma[anchorId] === false) {
-        // Check if the anchorId is attached to the DOM (i.e. DOM change
-        // happened before the anchorId was registered so a test against
-        // the registeredMapAnchors would have failedwhen the addedNode message
-        // came)
-        const domEl = getDOMElement(anchorId)
-        if(domEl) {
-          if(firstTime) {
-            //console.log("Anchor has already been attached, returning true...")
-          } else {
-            console.log("Dunno if this else statement is ever called...")
-            console.log("Anchor is registered, was not attached but now is, returning true...")
-          }
-
-          createMapOnElement(domEl, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
-          //console.dir(domEl)
-          rma[anchorId] = domEl
-          return true
-        } else {
-          // This means the anchorId is registered and the element is not yet
-          // valid and we should not allow it to pass
-          //console.log("anchorId is registered but not attached, returning false...")
-          return false
-        }
-      } else {
-        //console.log("anchorId is registered and attached, returning true...")
-        return true
-      }
-    } else {
-      //console.log("Regulation message sent to selector...")
-      //console.log(x)
-      let anyAdded = false
-      // The message is from the MutationObserver, check all the keys in the
-      // registeredMutationObserver. If a key exists then test if the element
-      // exists in the DOM and set it's DOM state appropriately
-      for(var key in rma) {
-        let inDOM = getDOMElement(key)
-        //let testVal = inDOM ? "true" : "false"
-        //console.log("Testing key: " + key + ", " + testVal )
-        if(inDOM) {
-          // If it's in the DOM but the registration is false, set it
-          // to true, and return a message indicating which key was added
-          if (rma[key] === false ) {
-            //console.log("Transition made: " + key + ", added")
-            //console.log("Adding map element registry...")
-            createMapOnElement(inDOM, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
-            rma[key] = inDOM
-            anyAdded = true
-          }
-        } else {
-          if(rma[key] !== false) {
-            //console.log("Transition made: " + key + ", removed")
-            //console.log("Removing key from map element registry...")
-            delete rma[key]
-          }
-        }
-      }
-
-      // If any relevant elements were added to the DOM then send true
-      // signal
-      return anyAdded
-    }
-  }
-}
-
 function makeRegulatedRawRootElem$(vtree$) {
-  let moConfig = { childList: true, subtree: true}
 
-  let regulation$ = Rx.DOM.fromMutationObserver(document, moConfig)
-           .concatMap((x) => Rx.Observable.from(x))
-           .filter((x) => {
-             return (x.addedNodes.length > 0 || x.removedNodes.length > 0)
-             })
-           //.doOnNext(x => {console.log("MutationRecord..."); console.log(x)})
+  let g_registeredAnchorId
+  const sharedVTree$ = vtree$.shareReplay(1)
+  const anchorRegistration$ = sharedVTree$.do(vtree => {
+    g_registeredAnchorId = getAnchorIdFromVTree(vtree)
+  })
 
-  return bufferWhile(Rx.Observable.merge(regulation$, vtree$), makeSelectorFunction(vdomRegulator), vdomRegulator)
-  //return Rx.Observable.merge(regulation$, vtree$)
+  const mutationObserverConfig = { childList: true, subtree: true }
+  const elementRegistration$ = Rx.DOM.fromMutationObserver(document, mutationObserverConfig)
+
+    //.do(x => console.log(`mutation observed`))
+    //.map(x => g_registeredElement = g_registeredAnchorId && document.getElementById(registeredAnchorId))
+
+  const regulation$ = Rx.Observable.merge(
+    anchorRegistration$,
+    elementRegistration$
+  )
+  .map(() => g_registeredAnchorId && document.getElementById(g_registeredAnchorId))
+  .distinctUntilChanged()
+  .filter(element => {
+    if (element) {
+      g_registeredElement = element
+      createMapOnElement(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
+      return true
+    } else {
+      if (g_registeredElement) {
+        removeMapFromElement(g_registeredElement)
+        g_registeredElement = undefined
+      }
+      return false
+    }
+  })
+  .flatMapLatest(anchorAvailable => anchorAvailable ? sharedVTree$ : Rx.Observable.empty())
+
+  return regulation$
 }
 
 function renderRawRootElem$(vtree$) {
@@ -379,4 +230,5 @@ function makeMapDOMDriver(accessToken, options) {
 
 export {
   makeMapDOMDriver,
+  g_registeredElement
 }
