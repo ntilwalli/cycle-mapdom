@@ -26,8 +26,6 @@ test("Basic functionality including instantiating VDOM after element is created"
   let outVal = outFunc(map$)
   t.ok(outVal.select && outVal.dispose, "should output object with valid select and dispose properties")
 
-
-
   setTimeout(() => {
     t.ok(rootEl.mapDOM, "should have valid mapDOM property on given element")
     document.body.removeChild(rootEl)
@@ -35,8 +33,15 @@ test("Basic functionality including instantiating VDOM after element is created"
 
   setTimeout(() => {
     t.notOk(g_registeredElement, "anchor should not be registered after root element removal")
-    t.end()
+    rootEl = document.createElement("div")
+    rootEl.setAttribute("id", "testId")
+    bodyEl = document.body.appendChild(rootEl)
   }, 2000)
+
+  setTimeout(() => {
+    t.ok(rootEl.mapDOM, "should have valid mapDOM property on element 2nd time around")
+    t.end()
+  }, 3000)
 
 })
 

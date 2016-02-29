@@ -63,37 +63,34 @@ function makeEmptyMapDOMElement() {
 //   element.mapDOM.instance = map
 // }
 
-function makeDiffAndPatchToElement$() {
+function diffAndPatchToElement$(_ref) {
+  var _ref2 = _slicedToArray(_ref, 2);
 
-  return function diffAndPatchToElement$(_ref) {
-    var _ref2 = _slicedToArray(_ref, 2);
+  var oldVTree = _ref2[0];
+  var newVTree = _ref2[1];
 
-    var oldVTree = _ref2[0];
-    var newVTree = _ref2[1];
+  if (typeof newVTree === 'undefined') {
+    return _rxDom2.default.Observable.empty();
+  }
 
-    if (typeof newVTree === 'undefined') {
-      return _rxDom2.default.Observable.empty();
-    }
+  // console.log("OldVTree")
+  // console.log(oldVTree)
+  // console.log("NewVTree")
+  // console.log(newVTree)
+  /* eslint-disable */
 
-    // console.log("OldVTree")
-    // console.log(oldVTree)
-    // console.log("NewVTree")
-    // console.log(newVTree)
-    /* eslint-disable */
+  var anchorId = getAnchorIdFromVTree(newVTree);
+  var mapDOM = (0, _virtualMapdom.getMapFromElement)(g_registeredElement);
+  var diffInfo = VDOM.diff(oldVTree, newVTree);
 
-    var anchorId = getAnchorIdFromVTree(newVTree);
-    var mapDOM = (0, _virtualMapdom.getMapFromElement)(g_registeredElement);
-    var diffInfo = VDOM.diff(oldVTree, newVTree);
+  // console.log("Diff old vs new VDOM tree...")
+  // console.log(diffInfo)
 
-    // console.log("Diff old vs new VDOM tree...")
-    // console.log(diffInfo)
+  var rootElem = VDOM.patch(mapDOM, diffInfo, { render: _virtualMapdom.render, patch: _virtualMapdom.patchRecursive });
 
-    var rootElem = VDOM.patch(mapDOM, diffInfo, { render: _virtualMapdom.render, patch: _virtualMapdom.patchRecursive });
+  /* eslint-enable */
 
-    /* eslint-enable */
-
-    return _rxDom2.default.Observable.just(mapDOM);
-  };
+  return _rxDom2.default.Observable.just(mapDOM);
 }
 
 function getAnchorIdFromVTree(vtree) {
@@ -116,7 +113,7 @@ function makeRegulatedRawRootElem$(vtree$) {
 
   var regulation$ = _rxDom2.default.Observable.merge(anchorRegistration$, elementRegistration$).map(function () {
     return g_registeredAnchorId && document.getElementById(g_registeredAnchorId);
-  }).distinctUntilChanged().filter(function (element) {
+  }).distinctUntilChanged().map(function (element) {
     if (element) {
       exports.g_registeredElement = g_registeredElement = element;
       (0, _virtualMapdom.createMapOnElement)(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions));
@@ -129,21 +126,19 @@ function makeRegulatedRawRootElem$(vtree$) {
       return false;
     }
   }).flatMapLatest(function (anchorAvailable) {
-    return anchorAvailable ? sharedVTree$ : _rxDom2.default.Observable.empty();
+    //console.log(`anchorAvailable: ${anchorAvailable}`)
+    if (anchorAvailable) {
+      return sharedVTree$.flatMapLatest(_transposition.transposeVTree).startWith(makeEmptyMapVDOMNode(g_MBMapOptions)).pairwise().flatMap(diffAndPatchToElement$);
+    } else {
+      return _rxDom2.default.Observable.empty();
+    }
   });
 
   return regulation$;
 }
 
 function renderRawRootElem$(vtree$) {
-
-  var diffAndPatchToElement$ = makeDiffAndPatchToElement$();
-
-  // The makeEmptyMapVDOMNode call below is replicated in the function
-  // makeSelectorFunction.  If the line below is changed then the line
-  // in that section should change too since the initial element of pairwise
-  // needs to be mirrored in the actual initial state of the instantiated mapVDOM
-  return makeRegulatedRawRootElem$(vtree$).flatMapLatest(_transposition.transposeVTree).startWith(makeEmptyMapVDOMNode(g_MBMapOptions)).pairwise().flatMap(diffAndPatchToElement$);
+  return makeRegulatedRawRootElem$(vtree$);
 }
 
 function isolateSource(source, scope) {

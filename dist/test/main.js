@@ -44,8 +44,15 @@ function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.const
 
   setTimeout(function () {
     t.notOk(_cycleMapdom.g_registeredElement, "anchor should not be registered after root element removal");
-    t.end();
+    rootEl = document.createElement("div");
+    rootEl.setAttribute("id", "testId");
+    bodyEl = document.body.appendChild(rootEl);
   }, 2000);
+
+  setTimeout(function () {
+    t.ok(rootEl.mapDOM, "should have valid mapDOM property on element 2nd time around");
+    t.end();
+  }, 3000);
 });
 
 (0, _tapeCatch2.default)("call to select returns a stream and select returns element based on selector", function (t) {

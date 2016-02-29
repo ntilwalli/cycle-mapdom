@@ -43,31 +43,28 @@ function makeEmptyMapDOMElement() {
 // }
 
 
-function makeDiffAndPatchToElement$() {
+function diffAndPatchToElement$([oldVTree, newVTree]) {
+  if (typeof newVTree === `undefined`) { return Rx.Observable.empty() }
 
-  return function diffAndPatchToElement$([oldVTree, newVTree]) {
-    if (typeof newVTree === `undefined`) { return Rx.Observable.empty() }
+  // console.log("OldVTree")
+  // console.log(oldVTree)
+  // console.log("NewVTree")
+  // console.log(newVTree)
+  /* eslint-disable */
 
-    // console.log("OldVTree")
-    // console.log(oldVTree)
-    // console.log("NewVTree")
-    // console.log(newVTree)
-    /* eslint-disable */
+  const anchorId = getAnchorIdFromVTree(newVTree)
+  const mapDOM = getMapDOMFromElement(g_registeredElement)
+  let diffInfo = VDOM.diff(oldVTree, newVTree)
 
-    const anchorId = getAnchorIdFromVTree(newVTree)
-    const mapDOM = getMapDOMFromElement(g_registeredElement)
-    let diffInfo = VDOM.diff(oldVTree, newVTree)
-
-    // console.log("Diff old vs new VDOM tree...")
-    // console.log(diffInfo)
+  // console.log("Diff old vs new VDOM tree...")
+  // console.log(diffInfo)
 
 
-    let rootElem = VDOM.patch(mapDOM, diffInfo, {render: render, patch: patchRecursive})
+  let rootElem = VDOM.patch(mapDOM, diffInfo, {render: render, patch: patchRecursive})
 
-    /* eslint-enable */
+  /* eslint-enable */
 
-    return Rx.Observable.just(mapDOM)
-  }
+  return Rx.Observable.just(mapDOM)
 }
 
 function getAnchorIdFromVTree(vtree) {
@@ -94,7 +91,7 @@ function makeRegulatedRawRootElem$(vtree$) {
   )
   .map(() => g_registeredAnchorId && document.getElementById(g_registeredAnchorId))
   .distinctUntilChanged()
-  .filter(element => {
+  .map(element => {
     if (element) {
       g_registeredElement = element
       createMapOnElement(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
@@ -107,24 +104,24 @@ function makeRegulatedRawRootElem$(vtree$) {
       return false
     }
   })
-  .flatMapLatest(anchorAvailable => anchorAvailable ? sharedVTree$ : Rx.Observable.empty())
+  .flatMapLatest(anchorAvailable => {
+    //console.log(`anchorAvailable: ${anchorAvailable}`)
+    if (anchorAvailable) {
+      return sharedVTree$
+        .flatMapLatest(transposeVTree)
+        .startWith(makeEmptyMapVDOMNode(g_MBMapOptions))
+        .pairwise()
+        .flatMap(diffAndPatchToElement$)
+    } else {
+      return Rx.Observable.empty()
+    }
+  })
 
   return regulation$
 }
 
 function renderRawRootElem$(vtree$) {
-
-  let diffAndPatchToElement$ = makeDiffAndPatchToElement$()
-
-  // The makeEmptyMapVDOMNode call below is replicated in the function
-  // makeSelectorFunction.  If the line below is changed then the line
-  // in that section should change too since the initial element of pairwise
-  // needs to be mirrored in the actual initial state of the instantiated mapVDOM
   return makeRegulatedRawRootElem$(vtree$)
-    .flatMapLatest(transposeVTree)
-    .startWith(makeEmptyMapVDOMNode(g_MBMapOptions))
-    .pairwise()
-    .flatMap(diffAndPatchToElement$)
 }
 
 function isolateSource(source, scope) {
