@@ -21,7 +21,9 @@ function transposeVTree(vtree) {
   if (typeof vtree.subscribe === 'function') {
     return vtree.flatMap(transposeVTree);
   } else if (vtree.type === 'VirtualNode' && Array.isArray(vtree.children) && vtree.children.length > 0) {
-    return _rxDom2.default.Observable.combineLatest(vtree.children.map(transposeVTree), function () {
+    return _rxDom2.default.Observable.combineLatest(vtree.children.filter(function (x) {
+      return x;
+    }).map(transposeVTree), function () {
       for (var _len = arguments.length, arr = Array(_len), _key = 0; _key < _len; _key++) {
         arr[_key] = arguments[_key];
       }

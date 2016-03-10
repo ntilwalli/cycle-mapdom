@@ -12,7 +12,7 @@ export function transposeVTree(vtree) {
     vtree.children.length > 0)
   {
     return Rx.Observable
-      .combineLatest(vtree.children.map(transposeVTree), (...arr) =>
+      .combineLatest(vtree.children.filter(x => x).map(transposeVTree), (...arr) =>
         new VNode(
           vtree.tagName, vtree.properties, arr, vtree.key, vtree.namespace
         )
