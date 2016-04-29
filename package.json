@@ -22,10 +22,10 @@
   },
   "homepage": "https://github.com/ntilwalli/cycle-mapdom#readme",
   "dependencies": {
+    "@cycle/rx-adapter": "^1.0.3",
     "matches-selector": "^1.0.0",
     "rx-dom": "^7.0.3",
     "virtual-dom": "^2.1.1",
-    "virtual-mapdom": "file:///Users/ntilwalli/Development/cycle/test/virtual-mapdom",
     "x-is-array": "^0.1.0"
   },
   "devDependencies": {
@@ -36,7 +36,7 @@
     "tape": "^4.2.2",
     "tape-catch": "^1.0.4",
     "testling": "^1.7.1",
-    "virtual-mapdom": "file:///Users/ntilwalli/Development/cycle/virtual-mapdom"
+    "virtual-mapdom": "file:///Users/ntilwalli/dev/cycle/diversity/virtual-mapdom"
   },
   "jspm": {
     "dependencies": {

@@ -8,6 +8,8 @@ import {transposeVTree} from './transposition'
 import matchesSelector from 'matches-selector'
 import isArray from 'x-is-array'
 import {fromEvent} from './fromevent'
+
+import RxAdapter from '@cycle/rx-adapter'
 // // Try-catch to prevent unnecessary import of DOM-specifics in Node.js env:
 // try {
 //   matchesSelector = require(`matches-selector`)
@@ -143,24 +145,26 @@ function isolateSink(sink, scope) {
 }
 
 
-function makeEventsSelector(element$) {
+function makeEventsSelector(element$, runStreamAdapter) {
   return function events(eventName) {
     if (typeof eventName !== `string`) {
       throw new Error(`DOM driver's events() expects argument to be a ` +
         `string representing the event type to listen for.`)
     }
 
-    return element$.flatMapLatest(elements => {
+    const out$ = element$.flatMapLatest(elements => {
       //console.log("Resubscribing to event: ", eventName)
       if (elements.length === 0) {
         return Rx.Observable.empty()
       }
       return fromEvent(elements, eventName)
     }).share()
+
+    return runStreamAdapter ? runStreamAdapter.adapt(out$, RxAdapter.streamSubscribe) : out$
   }
 }
 
-function makeElementSelector(rootEl$) {
+function makeElementSelector(rootEl$, runSA) {
   return function select(selector) {
     //console.log("Element selector, select called with selector: ", selector)
     if (typeof selector !== `string`) {
@@ -188,8 +192,8 @@ function makeElementSelector(rootEl$) {
 
     return {
       observable: element$,
-      select: makeElementSelector(element$),
-      events: makeEventsSelector(element$),
+      select: makeElementSelector(element$, runSA),
+      events: makeEventsSelector(element$, runSA),
     }
   }
 }
@@ -207,7 +211,7 @@ function makeMapDOMDriver(accessToken, options) {
   g_MBAccessToken = accessToken
   g_MBMapOptions = options || {}
 
-  return function mapDomDriver(vtree$, driverName) {
+  return function mapDomDriver(vtree$, runSA) {
 
     validateMapDOMDriverInput(vtree$)
 
@@ -217,7 +221,7 @@ function makeMapDOMDriver(accessToken, options) {
     let disposable = rootElem$.connect()
 
     return {
-      select: makeElementSelector(rootElem$),
+      select: makeElementSelector(rootElem$, runSA),
       dispose: () => disposable.dispose.bind(disposable),
       isolateSource: isolateSource,
       isolateSink: isolateSink

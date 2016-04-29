@@ -52,9 +52,9 @@ function createEventListener(_ref2) {
         handler: handler }));
     }
   } else if (elementToString === '[object Array]') {
-    for (var i = 0, len = element.length; i < len; i++) {
+    for (var _i = 0, _len = element.length; _i < _len; _i++) {
       disposables.add(createEventListener({
-        element: element[i],
+        element: element[_i],
         eventName: eventName,
         handler: handler }));
     }

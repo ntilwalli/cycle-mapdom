@@ -5,9 +5,10 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.g_registeredElement = exports.makeMapDOMDriver = undefined;
 
-var _slicedToArray = (function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; })(); // Importing 'rx-dom' imports 'rx' under the hood, so no need to
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }(); // Importing 'rx-dom' imports 'rx' under the hood, so no need to
 
 //import document from 'global/document'
+
 
 var _rxDom = require('rx-dom');
 
@@ -29,6 +30,10 @@ var _xIsArray2 = _interopRequireDefault(_xIsArray);
 
 var _fromevent = require('./fromevent');
 
+var _rxAdapter = require('@cycle/rx-adapter');
+
+var _rxAdapter2 = _interopRequireDefault(_rxAdapter);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // // Try-catch to prevent unnecessary import of DOM-specifics in Node.js env:
@@ -43,10 +48,10 @@ var VDOM = {
   patch: _virtualDom.patch
 };
 
-var g_MBAccessToken = undefined;
-var g_MBMapOptions = undefined;
+var g_MBAccessToken = void 0;
+var g_MBMapOptions = void 0;
 
-var g_registeredElement = undefined;
+var g_registeredElement = void 0;
 
 function makeEmptyMapVDOMNode(options) {
   return new _virtualDom.VNode('map', { options: options });
@@ -99,7 +104,7 @@ function getAnchorIdFromVTree(vtree) {
 
 function makeRegulatedRawRootElem$(vtree$) {
 
-  var g_registeredAnchorId = undefined;
+  var g_registeredAnchorId = void 0;
   var sharedVTree$ = vtree$.shareReplay(1);
   var anchorRegistration$ = sharedVTree$.do(function (vtree) {
     g_registeredAnchorId = getAnchorIdFromVTree(vtree);
@@ -159,23 +164,25 @@ function isolateSink(sink, scope) {
   });
 }
 
-function makeEventsSelector(element$) {
+function makeEventsSelector(element$, runStreamAdapter) {
   return function events(eventName) {
     if (typeof eventName !== 'string') {
       throw new Error('DOM driver\'s events() expects argument to be a ' + 'string representing the event type to listen for.');
     }
 
-    return element$.flatMapLatest(function (elements) {
+    var out$ = element$.flatMapLatest(function (elements) {
       //console.log("Resubscribing to event: ", eventName)
       if (elements.length === 0) {
         return _rxDom2.default.Observable.empty();
       }
       return (0, _fromevent.fromEvent)(elements, eventName);
     }).share();
+
+    return runStreamAdapter ? runStreamAdapter.adapt(out$, _rxAdapter2.default.streamSubscribe) : out$kajsdkj;
   };
 }
 
-function makeElementSelector(rootEl$) {
+function makeElementSelector(rootEl$, runSA) {
   return function select(selector) {
     //console.log("Element selector, select called with selector: ", selector)
     if (typeof selector !== 'string') {
@@ -202,8 +209,8 @@ function makeElementSelector(rootEl$) {
 
     return {
       observable: element$,
-      select: makeElementSelector(element$),
-      events: makeEventsSelector(element$)
+      select: makeElementSelector(element$, runSA),
+      events: makeEventsSelector(element$, runSA)
     };
   };
 }
@@ -220,7 +227,7 @@ function makeMapDOMDriver(accessToken, options) {
   g_MBAccessToken = accessToken;
   g_MBMapOptions = options || {};
 
-  return function mapDomDriver(vtree$, driverName) {
+  return function mapDomDriver(vtree$, runSA) {
 
     validateMapDOMDriverInput(vtree$);
 
@@ -229,7 +236,7 @@ function makeMapDOMDriver(accessToken, options) {
     var disposable = rootElem$.connect();
 
     return {
-      select: makeElementSelector(rootElem$),
+      select: makeElementSelector(rootElem$, runSA),
       dispose: function dispose() {
         return disposable.dispose.bind(disposable);
       },

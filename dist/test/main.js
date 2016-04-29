@@ -1,5 +1,7 @@
 'use strict';
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
 var _tapeCatch = require('tape-catch');
 
 var _tapeCatch2 = _interopRequireDefault(_tapeCatch);
@@ -13,8 +15,6 @@ var _virtualDom = require('virtual-dom');
 var _cycleMapdom = require('../src/cycle-mapdom');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _typeof(obj) { return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj; }
 
 (0, _tapeCatch2.default)("Basic functionality including instantiating VDOM after element is created", function (t) {
   t.equals(typeof _cycleMapdom.makeMapDOMDriver === 'undefined' ? 'undefined' : _typeof(_cycleMapdom.makeMapDOMDriver), 'function', "should be a function");
