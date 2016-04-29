@@ -26,7 +26,8 @@
     "matches-selector": "^1.0.0",
     "rx-dom": "^7.0.3",
     "virtual-dom": "^2.1.1",
-    "x-is-array": "^0.1.0"
+    "x-is-array": "^0.1.0",
+    "virtual-mapdom": "file:///Users/ntilwalli/dev/cycle/diversity/virtual-mapdom"
   },
   "devDependencies": {
     "babel-plugin-transform-es2015-modules-commonjs": "^6.3.16",
@@ -35,8 +36,7 @@
     "tap-spec": "^4.1.1",
     "tape": "^4.2.2",
     "tape-catch": "^1.0.4",
-    "testling": "^1.7.1",
-    "virtual-mapdom": "file:///Users/ntilwalli/dev/cycle/diversity/virtual-mapdom"
+    "testling": "^1.7.1"
   },
   "jspm": {
     "dependencies": {

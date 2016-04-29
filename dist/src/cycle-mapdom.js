@@ -178,7 +178,7 @@ function makeEventsSelector(element$, runStreamAdapter) {
       return (0, _fromevent.fromEvent)(elements, eventName);
     }).share();
 
-    return runStreamAdapter ? runStreamAdapter.adapt(out$, _rxAdapter2.default.streamSubscribe) : out$kajsdkj;
+    return runStreamAdapter ? runStreamAdapter.adapt(out$, _rxAdapter2.default.streamSubscribe) : out$;
   };
 }
 
