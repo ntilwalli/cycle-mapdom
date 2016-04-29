@@ -24,10 +24,11 @@
   "dependencies": {
     "@cycle/rx-adapter": "^1.0.3",
     "matches-selector": "^1.0.0",
+    "rx": "^4.1.0",
     "rx-dom": "^7.0.3",
     "virtual-dom": "^2.1.1",
-    "x-is-array": "^0.1.0",
-    "virtual-mapdom": "file:///Users/ntilwalli/dev/cycle/diversity/virtual-mapdom"
+    "virtual-mapdom": "file:///Users/ntilwalli/dev/cycle/diversity/virtual-mapdom",
+    "x-is-array": "^0.1.0"
   },
   "devDependencies": {
     "babel-plugin-transform-es2015-modules-commonjs": "^6.3.16",
