@@ -229,7 +229,7 @@ function makeMapDOMDriver(accessToken, options) {
 
   return function mapDomDriver(vtree$, runSA) {
 
-    var adapted$ = _rxAdapter2.default.adapt(vtree$, runSA.streamSubscribe);
+    var adapted$ = runSA ? _rxAdapter2.default.adapt(vtree$, runSA.streamSubscribe) : vtree$;
     var rootElem$ = renderRawRootElem$(adapted$).replay(null, 1);
 
     var disposable = rootElem$.connect();
