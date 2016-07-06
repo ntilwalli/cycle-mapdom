@@ -251,15 +251,9 @@ function makeMapDOMDriver(accessToken, options) {
 
     let adapted$
     if (runSA) {
-      adapted$ = runSA.remember(runSA.adapt(vtree$, xstreamSA.streamSubscribe)
-        .map(function (x) {
-          return x;
-        }))
+      adapted$ = runSA.remember(runSA.adapt(vtree$, xstreamSA.streamSubscribe))
     } else {
       adapted$ = vtree$
-        .map(function (x) {
-          return x;
-        })
         .remember()
     }
 

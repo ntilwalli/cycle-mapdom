@@ -275,13 +275,9 @@ function makeMapDOMDriver(accessToken, options) {
 
     var adapted$ = void 0;
     if (runSA) {
-      adapted$ = runSA.remember(runSA.adapt(vtree$, _xstreamAdapter2.default.streamSubscribe).map(function (x) {
-        return x;
-      }));
+      adapted$ = runSA.remember(runSA.adapt(vtree$, _xstreamAdapter2.default.streamSubscribe));
     } else {
-      adapted$ = vtree$.map(function (x) {
-        return x;
-      }).remember();
+      adapted$ = vtree$.remember();
     }
 
     var rootElem$ = renderRawRootElem$(adapted$).remember();
