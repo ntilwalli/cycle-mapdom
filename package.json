@@ -1,6 +1,6 @@
 {
   "name": "cycle-mapdom",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "CycleJS driver for virtual-mapdom",
   "main": "./dist/index.js",
   "scripts": {
@@ -22,13 +22,12 @@
   },
   "homepage": "https://github.com/ntilwalli/cycle-mapdom#readme",
   "dependencies": {
-    "@cycle/rx-adapter": "^1.0.3",
+    "@cycle/xstream-adapter": "^3.0.2",
     "matches-selector": "^1.0.0",
-    "rx": "^4.1.0",
-    "rx-dom": "^7.0.3",
     "virtual-dom": "^2.1.1",
     "virtual-mapdom": "file:../virtual-mapdom",
-    "x-is-array": "^0.1.0"
+    "x-is-array": "^0.1.0",
+    "xstream": "^5.1.1"
   },
   "devDependencies": {
     "babel-plugin-transform-es2015-modules-commonjs": "^6.3.16",
@@ -38,14 +37,5 @@
     "tape": "^4.2.2",
     "tape-catch": "^1.0.4",
     "testling": "^1.7.1"
-  },
-  "jspm": {
-    "dependencies": {
-      "matches-selector": "npm:matches-selector",
-      "rx-dom": "npm:rx-dom",
-      "virtual-dom": "npm:virtual-dom",
-      "virtual-mapdom": "github:ntilwalli/virtual-mapdom",
-      "x-is-array": "npm:x-is-array"
-    }
   }
 }

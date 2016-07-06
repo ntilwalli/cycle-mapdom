@@ -5,14 +5,19 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.g_registeredElement = exports.makeMapDOMDriver = undefined;
 
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }(); // Importing 'rx-dom' imports 'rx' under the hood, so no need to
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-//import document from 'global/document'
+var _xstream = require('xstream');
 
+var _xstream2 = _interopRequireDefault(_xstream);
 
-var _rxDom = require('rx-dom');
+var _dropRepeats = require('xstream/extra/dropRepeats');
 
-var _rxDom2 = _interopRequireDefault(_rxDom);
+var _dropRepeats2 = _interopRequireDefault(_dropRepeats);
+
+var _pairwise = require('xstream/extra/pairwise');
+
+var _pairwise2 = _interopRequireDefault(_pairwise);
 
 var _virtualDom = require('virtual-dom');
 
@@ -30,18 +35,13 @@ var _xIsArray2 = _interopRequireDefault(_xIsArray);
 
 var _fromevent = require('./fromevent');
 
-var _rxAdapter = require('@cycle/rx-adapter');
+var _fromevent2 = _interopRequireDefault(_fromevent);
 
-var _rxAdapter2 = _interopRequireDefault(_rxAdapter);
+var _xstreamAdapter = require('@cycle/xstream-adapter');
+
+var _xstreamAdapter2 = _interopRequireDefault(_xstreamAdapter);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-// // Try-catch to prevent unnecessary import of DOM-specifics in Node.js env:
-// try {
-//   matchesSelector = require(`matches-selector`)
-// } catch (err) {
-//   matchesSelector = () => {}
-// }
 
 var VDOM = {
   diff: _virtualDom.diff,
@@ -75,7 +75,7 @@ function diffAndPatchToElement$(_ref) {
   var newVTree = _ref2[1];
 
   if (typeof newVTree === 'undefined') {
-    return _rxDom2.default.Observable.empty();
+    return undefined;
   }
 
   // console.log("OldVTree")
@@ -95,7 +95,7 @@ function diffAndPatchToElement$(_ref) {
 
   /* eslint-enable */
 
-  return _rxDom2.default.Observable.just(mapDOM);
+  return mapDOM;
 }
 
 function getAnchorIdFromVTree(vtree) {
@@ -105,20 +105,55 @@ function getAnchorIdFromVTree(vtree) {
 function makeRegulatedRawRootElem$(vtree$) {
 
   var g_registeredAnchorId = void 0;
-  var sharedVTree$ = vtree$.shareReplay(1);
-  var anchorRegistration$ = sharedVTree$.do(function (vtree) {
+
+  var anchorRegistration$ = vtree$.map(function (vtree) {
     g_registeredAnchorId = getAnchorIdFromVTree(vtree);
+    return vtree;
   });
 
   var mutationObserverConfig = { childList: true, subtree: true };
-  var elementRegistration$ = _rxDom2.default.DOM.fromMutationObserver(document, mutationObserverConfig);
 
-  //.do(x => console.log(`mutation observed`))
-  //.map(x => g_registeredElement = g_registeredAnchorId && document.getElementById(registeredAnchorId))
+  var elementRegistration$ = _xstream2.default.create({
+    disposer: null,
+    next: null,
+    start: function start(listener) {
+      this.next = function (mutations) {
+        //console.log(`mo next`)
+        listener.next(mutations);
+      };
+      var observer = new MutationObserver(this.next);
+      var config = { childList: true, subtree: true };
+      observer.observe(document, config);
+      this.disposer = function () {
+        observer.disconnect();
+      };
+    },
+    stop: function stop() {
+      if (this.disposer) this.disposer();
+    }
+  });
 
-  var regulation$ = _rxDom2.default.Observable.merge(anchorRegistration$, elementRegistration$).map(function () {
+  //
+  //
+  // const elementRegistration$ = xs.create({
+  //   start: (listener) => {
+  //     const observer = new MutationObserver((mutations) => {
+  //       listener.next(mutations)
+  //     });
+  //
+  //     const config = { childList: true, subtree: true };
+  //     observer.observe(document, config);
+  //
+  //     removeFunc = function () { observer.disconnect();}
+  //   },
+  //   stop: () => {
+  //     if (removeFunc) removeFunc()
+  //   }
+  // })
+
+  var regulation$ = _xstream2.default.merge(anchorRegistration$, elementRegistration$).map(function () {
     return g_registeredAnchorId && document.getElementById(g_registeredAnchorId);
-  }).distinctUntilChanged().map(function (element) {
+  }).compose((0, _dropRepeats2.default)()).map(function (element) {
     if (element) {
       exports.g_registeredElement = g_registeredElement = element;
       (0, _virtualMapdom.createMapOnElement)(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions));
@@ -130,14 +165,16 @@ function makeRegulatedRawRootElem$(vtree$) {
       }
       return false;
     }
-  }).flatMapLatest(function (anchorAvailable) {
+  }).map(function (anchorAvailable) {
     //console.log(`anchorAvailable: ${anchorAvailable}`)
     if (anchorAvailable) {
-      return sharedVTree$.flatMapLatest(_transposition.transposeVTree).startWith(makeEmptyMapVDOMNode(g_MBMapOptions)).pairwise().flatMap(diffAndPatchToElement$);
+      return vtree$.startWith(makeEmptyMapVDOMNode(g_MBMapOptions)).compose(_pairwise2.default).map(diffAndPatchToElement$).filter(function (x) {
+        return !!x;
+      });
     } else {
-      return _rxDom2.default.Observable.empty();
+      return _xstream2.default.never();
     }
-  });
+  }).flatten();
 
   return regulation$;
 }
@@ -164,21 +201,21 @@ function isolateSink(sink, scope) {
   });
 }
 
-function makeEventsSelector(element$, runStreamAdapter) {
+function makeEventsSelector(element$, runSA) {
   return function events(eventName) {
     if (typeof eventName !== 'string') {
       throw new Error('DOM driver\'s events() expects argument to be a ' + 'string representing the event type to listen for.');
     }
 
-    var out$ = element$.flatMapLatest(function (elements) {
+    var out$ = element$.map(function (elements) {
       //console.log("Resubscribing to event: ", eventName)
       if (elements.length === 0) {
-        return _rxDom2.default.Observable.empty();
+        return _xstream2.default.never();
       }
-      return (0, _fromevent.fromEvent)(elements, eventName);
-    }).share();
+      return (0, _fromevent2.default)(elements, eventName);
+    }).flatten();
 
-    return runStreamAdapter ? runStreamAdapter.adapt(out$, _rxAdapter2.default.streamSubscribe) : out$;
+    return runSA ? runSA.adapt(out$, _xstreamAdapter2.default.streamSubscribe) : out$;
   };
 }
 
@@ -221,6 +258,13 @@ function validateMapDOMDriverInput(vtree$) {
   }
 }
 
+var noop = function noop() {};
+var noopListener = {
+  next: noop,
+  error: noop,
+  complete: noop
+};
+
 function makeMapDOMDriver(accessToken, options) {
   if (!accessToken || typeof accessToken !== 'string' && !(accessToken instanceof String)) throw new Error('MapDOMDriver requires an access token.');
 
@@ -229,16 +273,24 @@ function makeMapDOMDriver(accessToken, options) {
 
   return function mapDomDriver(vtree$, runSA) {
 
-    var adapted$ = runSA ? _rxAdapter2.default.adapt(vtree$, runSA.streamSubscribe) : vtree$;
-    var rootElem$ = renderRawRootElem$(adapted$).replay(null, 1);
+    var adapted$ = void 0;
+    if (runSA) {
+      adapted$ = runSA.remember(runSA.adapt(vtree$, _xstreamAdapter2.default.streamSubscribe).map(function (x) {
+        return x;
+      }));
+    } else {
+      adapted$ = vtree$.map(function (x) {
+        return x;
+      }).remember();
+    }
 
-    var disposable = rootElem$.connect();
+    var rootElem$ = renderRawRootElem$(adapted$).remember();
+
+    rootElem$.addListener(noopListener);
 
     return {
       select: makeElementSelector(rootElem$, runSA),
-      dispose: function dispose() {
-        return disposable.dispose.bind(disposable);
-      },
+      dispose: noop,
       isolateSource: isolateSource,
       isolateSink: isolateSink
     };

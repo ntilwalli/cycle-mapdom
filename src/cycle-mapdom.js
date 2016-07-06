@@ -1,21 +1,15 @@
-// Importing 'rx-dom' imports 'rx' under the hood, so no need to
-import Rx from 'rx-dom'
-//import document from 'global/document'
+import xs from 'xstream'
+import dropRepeats from 'xstream/extra/dropRepeats'
+import pairwise from 'xstream/extra/pairwise'
 import {VNode, diff, patch} from 'virtual-dom'
 import {createMapOnElement, removeMapFromElement, getMapFromElement as getMapDOMFromElement, patchRecursive, render} from 'virtual-mapdom'
 import {transposeVTree} from './transposition'
 
 import matchesSelector from 'matches-selector'
 import isArray from 'x-is-array'
-import {fromEvent} from './fromevent'
+import fromEvent from './fromevent'
 
-import RxAdapter from '@cycle/rx-adapter'
-// // Try-catch to prevent unnecessary import of DOM-specifics in Node.js env:
-// try {
-//   matchesSelector = require(`matches-selector`)
-// } catch (err) {
-//   matchesSelector = () => {}
-// }
+import xstreamSA from '@cycle/xstream-adapter'
 
 const VDOM = {
   diff: diff,
@@ -46,7 +40,7 @@ function makeEmptyMapDOMElement() {
 
 
 function diffAndPatchToElement$([oldVTree, newVTree]) {
-  if (typeof newVTree === `undefined`) { return Rx.Observable.empty() }
+  if (typeof newVTree === `undefined`) { return undefined }
 
   // console.log("OldVTree")
   // console.log(oldVTree)
@@ -66,7 +60,7 @@ function diffAndPatchToElement$([oldVTree, newVTree]) {
 
   /* eslint-enable */
 
-  return Rx.Observable.just(mapDOM)
+  return mapDOM
 }
 
 function getAnchorIdFromVTree(vtree) {
@@ -76,23 +70,56 @@ function getAnchorIdFromVTree(vtree) {
 function makeRegulatedRawRootElem$(vtree$) {
 
   let g_registeredAnchorId
-  const sharedVTree$ = vtree$.shareReplay(1)
-  const anchorRegistration$ = sharedVTree$.do(vtree => {
-    g_registeredAnchorId = getAnchorIdFromVTree(vtree)
+
+  const anchorRegistration$ = vtree$.map(function (vtree) {
+    g_registeredAnchorId = getAnchorIdFromVTree(vtree);
+    return vtree;
+  });
+
+  const mutationObserverConfig = { childList: true, subtree: true };
+
+  const elementRegistration$ = xs.create({
+    disposer: null,
+    next: null,
+    start: function (listener) {
+      this.next = function (mutations) {
+        //console.log(`mo next`)
+        listener.next(mutations)
+      };
+      const observer = new MutationObserver(this.next);
+      const config = { childList: true, subtree: true };
+      observer.observe(document, config);
+      this.disposer = function () { observer.disconnect();}
+    },
+    stop: function () {
+      if (this.disposer) this.disposer()
+    }
   })
 
-  const mutationObserverConfig = { childList: true, subtree: true }
-  const elementRegistration$ = Rx.DOM.fromMutationObserver(document, mutationObserverConfig)
+  //
+  //
+  // const elementRegistration$ = xs.create({
+  //   start: (listener) => {
+  //     const observer = new MutationObserver((mutations) => {
+  //       listener.next(mutations)
+  //     });
+  //
+  //     const config = { childList: true, subtree: true };
+  //     observer.observe(document, config);
+  //
+  //     removeFunc = function () { observer.disconnect();}
+  //   },
+  //   stop: () => {
+  //     if (removeFunc) removeFunc()
+  //   }
+  // })
 
-    //.do(x => console.log(`mutation observed`))
-    //.map(x => g_registeredElement = g_registeredAnchorId && document.getElementById(registeredAnchorId))
-
-  const regulation$ = Rx.Observable.merge(
+  const regulation$ = xs.merge(
     anchorRegistration$,
     elementRegistration$
   )
   .map(() => g_registeredAnchorId && document.getElementById(g_registeredAnchorId))
-  .distinctUntilChanged()
+  .compose(dropRepeats())
   .map(element => {
     if (element) {
       g_registeredElement = element
@@ -106,18 +133,19 @@ function makeRegulatedRawRootElem$(vtree$) {
       return false
     }
   })
-  .flatMapLatest(anchorAvailable => {
+  .map(anchorAvailable => {
     //console.log(`anchorAvailable: ${anchorAvailable}`)
     if (anchorAvailable) {
-      return sharedVTree$
-        .flatMapLatest(transposeVTree)
+      return vtree$
         .startWith(makeEmptyMapVDOMNode(g_MBMapOptions))
-        .pairwise()
-        .flatMap(diffAndPatchToElement$)
+        .compose(pairwise)
+        .map(diffAndPatchToElement$)
+        .filter(x => !!x)
     } else {
-      return Rx.Observable.empty()
+      return xs.never()
     }
   })
+  .flatten()
 
   return regulation$
 }
@@ -145,22 +173,23 @@ function isolateSink(sink, scope) {
 }
 
 
-function makeEventsSelector(element$, runStreamAdapter) {
+function makeEventsSelector(element$, runSA) {
   return function events(eventName) {
     if (typeof eventName !== `string`) {
       throw new Error(`DOM driver's events() expects argument to be a ` +
         `string representing the event type to listen for.`)
     }
 
-    const out$ = element$.flatMapLatest(elements => {
+    const out$ = element$.map(elements => {
       //console.log("Resubscribing to event: ", eventName)
       if (elements.length === 0) {
-        return Rx.Observable.empty()
+        return xs.never()
       }
       return fromEvent(elements, eventName)
-    }).share()
+    })
+    .flatten()
 
-    return runStreamAdapter ? runStreamAdapter.adapt(out$, RxAdapter.streamSubscribe) : out$
+    return runSA ? runSA.adapt(out$, xstreamSA.streamSubscribe) : out$
   }
 }
 
@@ -205,6 +234,13 @@ function validateMapDOMDriverInput(vtree$) {
   }
 }
 
+const noop = () => {}
+const noopListener = {
+  next: noop,
+  error: noop,
+  complete: noop
+}
+
 function makeMapDOMDriver(accessToken, options) {
   if (!accessToken || (typeof(accessToken) !== 'string' && !(accessToken instanceof String))) throw new Error(`MapDOMDriver requires an access token.`)
 
@@ -213,15 +249,28 @@ function makeMapDOMDriver(accessToken, options) {
 
   return function mapDomDriver(vtree$, runSA) {
 
-    const adapted$ = runSA ? RxAdapter.adapt(vtree$, runSA.streamSubscribe) : vtree$
-    let rootElem$ = renderRawRootElem$(adapted$)
-      .replay(null, 1)
+    let adapted$
+    if (runSA) {
+      adapted$ = runSA.remember(runSA.adapt(vtree$, xstreamSA.streamSubscribe)
+        .map(function (x) {
+          return x;
+        }))
+    } else {
+      adapted$ = vtree$
+        .map(function (x) {
+          return x;
+        })
+        .remember()
+    }
 
-    let disposable = rootElem$.connect()
+    var rootElem$ = renderRawRootElem$(adapted$).remember();
+
+
+    rootElem$.addListener(noopListener)
 
     return {
       select: makeElementSelector(rootElem$, runSA),
-      dispose: () => disposable.dispose.bind(disposable),
+      dispose: noop,
       isolateSource: isolateSource,
       isolateSink: isolateSink
     }

@@ -1,26 +1,44 @@
-import Rx from 'rx-dom'
+import xs from 'xstream'
 
-const disposableCreate = Rx.Disposable.create
-const CompositeDisposable = Rx.CompositeDisposable
-const AnonymousObservable = Rx.AnonymousObservable
+class CompositeProducer {
+  constructor() {
+    this._disposables = []
+  }
 
-function createListener({element, eventName, handler, useCapture}) {
+  add(disposer) {
+    this._disposables.push(disposer)
+  }
+
+  start(listener) {
+    this._disposables.forEach(producer => producer.start(listener))
+  }
+
+  stop() {
+    this._disposables.forEach(producer => producer.stop())
+    this._disposables = []
+  }
+}
+
+function createProducer(element, eventName, handler) {
   if (element.instance && element.instance.addEventListener) {
     //console.log(`Adding event listener: ${eventName}`)
     //console.log(element)
-    element.instance.addEventListener(eventName, handler)
-    return disposableCreate(function removeEventListener() {
-      //console.log("eventListener disposable called: ", eventName)
-      element.instance.removeEventListener(eventName, handler)
-    })
+    return {
+      start: () => {
+        element.instance.addEventListener(eventName, handler)
+      },
+      stop: () => {
+        element.instance.removeEventListener(eventName, handler)
+      }
+    }
   }
 
   throw new Error(`No instance or listener found`)
 
 }
 
-function createEventListener({element, eventName, handler}) {
-  const disposables = new CompositeDisposable()
+function createEventProducer(element, eventName, handler) {
+  const producer = new CompositeProducer()
 
   const toStr = Object.prototype.toString
   let elementToString = toStr.call(element)
@@ -29,35 +47,42 @@ function createEventListener({element, eventName, handler}) {
     elementToString === `[object HTMLCollection]`)
   {
     for (let i = 0, len = element.length; i < len; i++) {
-      disposables.add(createEventListener({
-          element: element.item(i),
+      producer.add(createProducer(
+          element.item(i),
           eventName,
-          handler}))
+          handler))
     }
   } else if(elementToString === `[object Array]`) {
     for (let i = 0, len = element.length; i < len; i++) {
-      disposables.add(createEventListener({
-          element: element[i],
+      producer.add(createProducer(
+          element[i],
           eventName,
-          handler}))
+          handler))
     }
   }
   else if (element) {
-    disposables.add(createListener({element, eventName, handler}))
+    producer.add(createProducer(element, eventName, handler))
   }
-  return disposables
+
+  return producer
 }
 
-export function fromEvent(element, eventName) {
+export default function fromMapboxEvent(element, eventName) {
   //console.log("fromEvent...")
   //console.log(element)
-  return new AnonymousObservable(function subscribe(observer) {
-    return createEventListener({
-      element,
-      eventName,
-      handler: function handler() {
-        observer.onNext(arguments[0])
-      }
-    })
-  }).share()
+
+  return xs.create({
+    element: element,
+    eventName: eventName,
+    next: null,
+    producer: null,
+    start: function start(listener) {
+      this.next = function next(event) { listener.next(event); };
+      this.producer = createEventProducer(this.element, this.eventName, this.next)
+      this.producer.start()
+    },
+    stop: function stop() {
+      if (this.producer) this.producer.stop()
+    }
+  })
 }

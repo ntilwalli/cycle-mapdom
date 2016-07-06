@@ -6,9 +6,9 @@ var _tapeCatch = require('tape-catch');
 
 var _tapeCatch2 = _interopRequireDefault(_tapeCatch);
 
-var _rxDom = require('rx-dom');
+var _xstream = require('xstream');
 
-var _rxDom2 = _interopRequireDefault(_rxDom);
+var _xstream2 = _interopRequireDefault(_xstream);
 
 var _virtualDom = require('virtual-dom');
 
@@ -28,7 +28,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
   var testVMaps = [new _virtualDom.VNode('map', { anchorId: "testId", centerZoom: { center: [4, 5], zoom: 5 } }), new _virtualDom.VNode('map', { anchorId: "testId", centerZoom: { center: [4, 5], zoom: 5 } }, [new _virtualDom.VNode('tileLayer', { tile: "testTile", attributes: { id: "testTile1" } })])];
 
-  var map$ = _rxDom2.default.Observable.interval(100).take(2).map(function (x) {
+  var map$ = _xstream2.default.periodic(100).take(2).map(function (x) {
     return testVMaps[x];
   });
 
@@ -63,7 +63,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
   var testVMaps = [new _virtualDom.VNode('map', { anchorId: "testId3", centerZoom: { center: [4, 5], zoom: 5 } }), new _virtualDom.VNode('map', { anchorId: "testId3", centerZoom: { center: [4, 5], zoom: 5 } }, [new _virtualDom.VNode('tileLayer', { tile: "testTile", attributes: { id: "testTile3" } })])];
 
-  var map$ = _rxDom2.default.Observable.interval(100).take(2).map(function (x) {
+  var map$ = _xstream2.default.periodic(100).take(2).map(function (x) {
     return testVMaps[x];
   });
 
@@ -71,11 +71,16 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
   var outVal = outFunc(map$);
   t.equal(_typeof(outVal.select), 'function', "makeMapDOMDriver should return object with select property that is a function");
   var elem$ = outVal.select("#testTile3").observable;
-  t.ok(elem$.subscribe, "elem$ should have subscribe function");
-  elem$.doOnNext(function (x) {
-    x.forEach(function (y) {
-      t.equal(y.tagName, "TILELAYER", "selected element should be tileLayer");
-      t.ok(y.instance, "element should have in attached instance property");
-    });
-  }).publish().refCount().subscribe();
+  t.ok(elem$.addListener, "elem$ should have addListener function");
+  elem$.addListener({
+    next: function next(x) {
+      x.forEach(function (y) {
+        t.equal(y.tagName, "TILELAYER", "selected element should be tileLayer");
+        t.ok(y.instance, "element should have in attached instance property");
+      });
+    },
+    error: function error() {},
+    complete: function complete() {}
+  });
+  //.publish().refCount().subscribe()
 });
