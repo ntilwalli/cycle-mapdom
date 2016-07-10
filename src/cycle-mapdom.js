@@ -71,10 +71,12 @@ function makeRegulatedRawRootElem$(vtree$) {
 
   let g_registeredAnchorId
 
-  const anchorRegistration$ = vtree$.map(function (vtree) {
-    g_registeredAnchorId = getAnchorIdFromVTree(vtree);
-    return vtree;
-  });
+  const anchorRegistration$ = vtree$
+    .filter(vtree => vtree)
+    .map(function (vtree) {
+      g_registeredAnchorId = getAnchorIdFromVTree(vtree);
+      return vtree;
+    })
 
   const mutationObserverConfig = { childList: true, subtree: true };
 
@@ -95,24 +97,6 @@ function makeRegulatedRawRootElem$(vtree$) {
       if (this.disposer) this.disposer()
     }
   })
-
-  //
-  //
-  // const elementRegistration$ = xs.create({
-  //   start: (listener) => {
-  //     const observer = new MutationObserver((mutations) => {
-  //       listener.next(mutations)
-  //     });
-  //
-  //     const config = { childList: true, subtree: true };
-  //     observer.observe(document, config);
-  //
-  //     removeFunc = function () { observer.disconnect();}
-  //   },
-  //   stop: () => {
-  //     if (removeFunc) removeFunc()
-  //   }
-  // })
 
   const regulation$ = xs.merge(
     anchorRegistration$,

@@ -106,7 +106,9 @@ function makeRegulatedRawRootElem$(vtree$) {
 
   var g_registeredAnchorId = void 0;
 
-  var anchorRegistration$ = vtree$.map(function (vtree) {
+  var anchorRegistration$ = vtree$.filter(function (vtree) {
+    return vtree;
+  }).map(function (vtree) {
     g_registeredAnchorId = getAnchorIdFromVTree(vtree);
     return vtree;
   });
@@ -132,24 +134,6 @@ function makeRegulatedRawRootElem$(vtree$) {
       if (this.disposer) this.disposer();
     }
   });
-
-  //
-  //
-  // const elementRegistration$ = xs.create({
-  //   start: (listener) => {
-  //     const observer = new MutationObserver((mutations) => {
-  //       listener.next(mutations)
-  //     });
-  //
-  //     const config = { childList: true, subtree: true };
-  //     observer.observe(document, config);
-  //
-  //     removeFunc = function () { observer.disconnect();}
-  //   },
-  //   stop: () => {
-  //     if (removeFunc) removeFunc()
-  //   }
-  // })
 
   var regulation$ = _xstream2.default.merge(anchorRegistration$, elementRegistration$).map(function () {
     return g_registeredAnchorId && document.getElementById(g_registeredAnchorId);
