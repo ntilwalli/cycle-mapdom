@@ -2,7 +2,7 @@ import xs from 'xstream'
 import dropRepeats from 'xstream/extra/dropRepeats'
 import pairwise from 'xstream/extra/pairwise'
 import {VNode, diff, patch} from 'virtual-dom'
-import {createMapOnElement, removeMapFromElement, getMapFromElement as getMapDOMFromElement, patchRecursive, render} from 'virtual-mapdom'
+import {createMapOnElement, removeMapFromElement, getMapFromElement, patchRecursive, render} from 'virtual-mapdom'
 import {transposeVTree} from './transposition'
 
 import matchesSelector from 'matches-selector'
@@ -49,7 +49,7 @@ function diffAndPatchToElement$([oldVTree, newVTree]) {
   /* eslint-disable */
 
   const anchorId = getAnchorIdFromVTree(newVTree)
-  const mapDOM = getMapDOMFromElement(g_registeredElement)
+  const mapDOM = getMapFromElement(g_registeredElement)
   let diffInfo = VDOM.diff(oldVTree, newVTree)
 
   // console.log("Diff old vs new VDOM tree...")
@@ -67,6 +67,15 @@ function getAnchorIdFromVTree(vtree) {
   return vtree.properties.anchorId
 }
 
+function filterNonTruthyDescendants(vtree) {
+  if (vtree.children.length) {
+    vtree.children = vtree.children.filter(x => x).map(filterNonTruthyDescendants)
+    return vtree
+  }
+
+  return vtree
+}
+
 function makeRegulatedRawRootElem$(vtree$) {
 
   let g_registeredAnchorId
@@ -74,6 +83,7 @@ function makeRegulatedRawRootElem$(vtree$) {
   const anchorRegistration$ = vtree$
     .filter(vtree => vtree)
     .map(function (vtree) {
+      //console.log(`Registering anchor`)
       g_registeredAnchorId = getAnchorIdFromVTree(vtree);
       return vtree;
     })
@@ -107,11 +117,17 @@ function makeRegulatedRawRootElem$(vtree$) {
   .map(element => {
     if (element) {
       g_registeredElement = element
-      createMapOnElement(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
+      //console.log(`Found anchor element`)
+      //createMapOnElement(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
       return true
     } else {
       if (g_registeredElement) {
-        removeMapFromElement(g_registeredElement)
+        if (getMapFromElement(g_registeredElement)) {
+          //console.log(`Removing map`)
+          removeMapFromElement(g_registeredElement)
+        }
+
+        //console.log(`Unregistering anchor`)
         g_registeredElement = undefined
       }
       return false
@@ -121,7 +137,18 @@ function makeRegulatedRawRootElem$(vtree$) {
     //console.log(`anchorAvailable: ${anchorAvailable}`)
     if (anchorAvailable) {
       return vtree$
-        .startWith(makeEmptyMapVDOMNode(g_MBMapOptions))
+        .map(filterNonTruthyDescendants)
+        .map(vtree => {
+          if (!getMapFromElement(g_registeredElement)) {
+            const initNode = makeEmptyMapVDOMNode(vtree.properties.mapOptions)
+            createMapOnElement(g_registeredElement, g_MBAccessToken, initNode)
+
+            return xs.of(initNode, vtree)
+          } else {
+            return xs.of(vtree)
+          }
+        })
+        .flatten()
         .compose(pairwise)
         .map(diffAndPatchToElement$)
         .filter(x => !!x)

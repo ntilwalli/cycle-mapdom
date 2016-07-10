@@ -102,6 +102,17 @@ function getAnchorIdFromVTree(vtree) {
   return vtree.properties.anchorId;
 }
 
+function filterNonTruthyDescendants(vtree) {
+  if (vtree.children.length) {
+    vtree.children = vtree.children.filter(function (x) {
+      return x;
+    }).map(filterNonTruthyDescendants);
+    return vtree;
+  }
+
+  return vtree;
+}
+
 function makeRegulatedRawRootElem$(vtree$) {
 
   var g_registeredAnchorId = void 0;
@@ -109,6 +120,7 @@ function makeRegulatedRawRootElem$(vtree$) {
   var anchorRegistration$ = vtree$.filter(function (vtree) {
     return vtree;
   }).map(function (vtree) {
+    //console.log(`Registering anchor`)
     g_registeredAnchorId = getAnchorIdFromVTree(vtree);
     return vtree;
   });
@@ -140,11 +152,17 @@ function makeRegulatedRawRootElem$(vtree$) {
   }).compose((0, _dropRepeats2.default)()).map(function (element) {
     if (element) {
       exports.g_registeredElement = g_registeredElement = element;
-      (0, _virtualMapdom.createMapOnElement)(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions));
+      //console.log(`Found anchor element`)
+      //createMapOnElement(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
       return true;
     } else {
       if (g_registeredElement) {
-        (0, _virtualMapdom.removeMapFromElement)(g_registeredElement);
+        if ((0, _virtualMapdom.getMapFromElement)(g_registeredElement)) {
+          //console.log(`Removing map`)
+          (0, _virtualMapdom.removeMapFromElement)(g_registeredElement);
+        }
+
+        //console.log(`Unregistering anchor`)
         exports.g_registeredElement = g_registeredElement = undefined;
       }
       return false;
@@ -152,7 +170,16 @@ function makeRegulatedRawRootElem$(vtree$) {
   }).map(function (anchorAvailable) {
     //console.log(`anchorAvailable: ${anchorAvailable}`)
     if (anchorAvailable) {
-      return vtree$.startWith(makeEmptyMapVDOMNode(g_MBMapOptions)).compose(_pairwise2.default).map(diffAndPatchToElement$).filter(function (x) {
+      return vtree$.map(filterNonTruthyDescendants).map(function (vtree) {
+        if (!(0, _virtualMapdom.getMapFromElement)(g_registeredElement)) {
+          var initNode = makeEmptyMapVDOMNode(vtree.properties.mapOptions);
+          (0, _virtualMapdom.createMapOnElement)(g_registeredElement, g_MBAccessToken, initNode);
+
+          return _xstream2.default.of(initNode, vtree);
+        } else {
+          return _xstream2.default.of(vtree);
+        }
+      }).flatten().compose(_pairwise2.default).map(diffAndPatchToElement$).filter(function (x) {
         return !!x;
       });
     } else {
