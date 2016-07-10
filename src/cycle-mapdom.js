@@ -17,7 +17,6 @@ const VDOM = {
 }
 
 let g_MBAccessToken
-let g_MBMapOptions
 
 
 let g_registeredElement
@@ -117,8 +116,6 @@ function makeRegulatedRawRootElem$(vtree$) {
   .map(element => {
     if (element) {
       g_registeredElement = element
-      //console.log(`Found anchor element`)
-      //createMapOnElement(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
       return true
     } else {
       if (g_registeredElement) {
@@ -140,7 +137,7 @@ function makeRegulatedRawRootElem$(vtree$) {
         .map(filterNonTruthyDescendants)
         .map(vtree => {
           if (!getMapFromElement(g_registeredElement)) {
-            const initNode = makeEmptyMapVDOMNode(vtree.properties.mapOptions)
+            const initNode = makeEmptyMapVDOMNode(vtree.properties.mapOptions || {})
             createMapOnElement(g_registeredElement, g_MBAccessToken, initNode)
 
             return xs.of(initNode, vtree)
@@ -252,11 +249,10 @@ const noopListener = {
   complete: noop
 }
 
-function makeMapDOMDriver(accessToken, options) {
+function makeMapDOMDriver(accessToken) {
   if (!accessToken || (typeof(accessToken) !== 'string' && !(accessToken instanceof String))) throw new Error(`MapDOMDriver requires an access token.`)
 
   g_MBAccessToken = accessToken
-  g_MBMapOptions = options || {}
 
   return function mapDomDriver(vtree$, runSA) {
 
