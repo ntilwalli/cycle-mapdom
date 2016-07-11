@@ -3,7 +3,6 @@ import dropRepeats from 'xstream/extra/dropRepeats'
 import pairwise from 'xstream/extra/pairwise'
 import {VNode, diff, patch} from 'virtual-dom'
 import {createMapOnElement, removeMapFromElement, getMapFromElement, patchRecursive, render} from 'virtual-mapdom'
-import {transposeVTree} from './transposition'
 
 import matchesSelector from 'matches-selector'
 import isArray from 'x-is-array'
@@ -16,55 +15,74 @@ const VDOM = {
   patch: patch
 }
 
-let g_MBAccessToken
+const noop = () => {}
+const noopListener = {
+  next: noop,
+  error: noop,
+  complete: noop
+}
 
-
-let g_registeredElement
+const g_unanchoredLedger = {}
+//const g_anchoredLedger = {}
 
 function makeEmptyMapVDOMNode(options) {
   return new VNode('map', {options})
 }
 
-function makeEmptyMapDOMElement() {
-  return document.createElement('map')
-}
-
-
-// function Element(element) {
-//   const options = { zoomControl: false }
-//   const map = L.mapbox.map(element, null, options)
-//   element.mapDOM = makeEmptyMapDOMElement()
-//   element.mapDOM.instance = map
-// }
-
-
-function diffAndPatchToElement$([oldVTree, newVTree]) {
-  if (typeof newVTree === `undefined`) { return undefined }
-
-  // console.log("OldVTree")
-  // console.log(oldVTree)
-  // console.log("NewVTree")
-  // console.log(newVTree)
-  /* eslint-disable */
-
-  const anchorId = getAnchorIdFromVTree(newVTree)
-  const mapDOM = getMapFromElement(g_registeredElement)
-  let diffInfo = VDOM.diff(oldVTree, newVTree)
-
-  // console.log("Diff old vs new VDOM tree...")
-  // console.log(diffInfo)
-
-
-  let rootElem = VDOM.patch(mapDOM, diffInfo, {render: render, patch: patchRecursive})
-
-  /* eslint-enable */
-
-  return mapDOM
-}
 
 function getAnchorIdFromVTree(vtree) {
   return vtree.properties.anchorId
 }
+
+function diffAndPatchToElement(vtree, accessToken) {
+  if (typeof vtree === `undefined` || !vtree) { return undefined }
+
+  const newVTree = filterNonTruthyDescendants(vtree)
+  const anchorId = getAnchorIdFromVTree(newVTree)
+  //console.log(anchorId)
+  const anchor = document.getElementById(anchorId)
+  //console.log(anchor)
+  if (!anchor) {
+    //console.log(`not anchored`)
+    g_unanchoredLedger[anchorId] = newVTree
+    return null
+  } else {
+    //console.log(`anchored`)
+    let mapDOM = getMapFromElement(anchor)
+
+    if (!mapDOM) {
+      //g_anchoredLedger[anchorId] = anchor
+      const initNode = makeEmptyMapVDOMNode(newVTree.properties.mapOptions || {})
+      createMapOnElement(anchor, accessToken, initNode)
+      anchor.vtree = initNode
+      mapDOM = getMapFromElement(anchor)
+    }
+
+    const oldVTree = anchor.vtree
+
+    // console.log("OldVTree")
+    // console.log(oldVTree)
+    // console.log("NewVTree")
+    // console.log(newVTree)
+
+
+    let diffInfo = VDOM.diff(oldVTree, newVTree)
+
+    // console.log("Diff old vs new VDOM tree...")
+    // console.log(diffInfo)
+
+
+    let rootElem = VDOM.patch(mapDOM, diffInfo, {render: render, patch: patchRecursive})
+
+    anchor.vtree = newVTree
+    /* eslint-enable */
+
+    return newVTree
+  }
+
+}
+
+
 
 function filterNonTruthyDescendants(vtree) {
   if (vtree.children.length) {
@@ -75,21 +93,15 @@ function filterNonTruthyDescendants(vtree) {
   return vtree
 }
 
-function makeRegulatedRawRootElem$(vtree$) {
 
-  let g_registeredAnchorId
+function renderRawRootElem$(vtree$, accessToken) {
 
-  const anchorRegistration$ = vtree$
-    .filter(vtree => vtree)
-    .map(function (vtree) {
-      //console.log(`Registering anchor`)
-      g_registeredAnchorId = getAnchorIdFromVTree(vtree);
-      return vtree;
+  const anchored$ = vtree$
+    .map(vtree => {
+      return diffAndPatchToElement(vtree, accessToken)
     })
 
-  const mutationObserverConfig = { childList: true, subtree: true };
-
-  const elementRegistration$ = xs.create({
+  const mutation$ = xs.create({
     disposer: null,
     next: null,
     start: function (listener) {
@@ -106,80 +118,48 @@ function makeRegulatedRawRootElem$(vtree$) {
       if (this.disposer) this.disposer()
     }
   })
+  //.debug(x => console.log(`Hey`))
+  .map(() => {
+    let anchorId
 
-  const regulation$ = xs.merge(
-    anchorRegistration$,
-    elementRegistration$
-  )
-  .map(() => g_registeredAnchorId && document.getElementById(g_registeredAnchorId))
-  .compose(dropRepeats())
-  .map(element => {
-    if (element) {
-      g_registeredElement = element
-      return true
-    } else {
-      if (g_registeredElement) {
-        if (getMapFromElement(g_registeredElement)) {
-          //console.log(`Removing map`)
-          removeMapFromElement(g_registeredElement)
-        }
+    // for (anchorId in g_anchoredLedger) {
+    //   //console.log(`testing anchored`)
+    //   const anchor = document.getElementById(anchorId)
+    //   //console.log(`Hey`)
+    //   if (!anchor) {
+    //     //console.log(`saw anchored, removing`)
+    //     removeMapFromElement(anchor)
+    //     delete g_anchoredLedger[anchorId]
+    //   }
+    // }
 
-        //console.log(`Unregistering anchor`)
-        g_registeredElement = undefined
+    //return xs.never()
+
+    const buffer = []
+    for (anchorId in g_unanchoredLedger) {
+      //console.log(`testing unanchored`)
+      //console.log(`anchorId: ${anchorId}`)
+      const anchor = document.getElementById(anchorId)
+      const buffer = []
+      if (anchor) {
+        //console.log(`saw unanchored, adding`)
+        const vtree = diffAndPatchToElement(g_unanchoredLedger[anchorId], accessToken)
+        delete g_unanchoredLedger[anchorId]
+        buffer.push(vtree)
       }
-      return false
     }
-  })
-  .map(anchorAvailable => {
-    //console.log(`anchorAvailable: ${anchorAvailable}`)
-    if (anchorAvailable) {
-      return vtree$
-        .map(filterNonTruthyDescendants)
-        .map(vtree => {
-          if (!getMapFromElement(g_registeredElement)) {
-            const initNode = makeEmptyMapVDOMNode(vtree.properties.mapOptions || {})
-            createMapOnElement(g_registeredElement, g_MBAccessToken, initNode)
-
-            return xs.of(initNode, vtree)
-          } else {
-            return xs.of(vtree)
-          }
-        })
-        .flatten()
-        .compose(pairwise)
-        .map(diffAndPatchToElement$)
-        .filter(x => !!x)
+    //return xs.never()
+    //
+    if (buffer.length) {
+      return xs.of(...buffer)
     } else {
       return xs.never()
     }
-  })
-  .flatten()
 
-  return regulation$
+  }).flatten()
+
+  return xs.merge(anchored$, mutation$).filter(x => !!x)
 }
-
-function renderRawRootElem$(vtree$) {
-  return makeRegulatedRawRootElem$(vtree$)
-}
-
-function isolateSource(source, scope) {
-  return source.select(".cycle-scope-" + scope);
-}
-
-function isolateSink(sink, scope) {
-  return sink.map(function (vtree) {
-    vtree.properties = vtree.properties || {}
-    vtree.properties.attributes = vtree.properties.attributes || {}
-    const vtreeClass = vtree.properties.attributes.class === undefined ? `` : vtree.properties.attributes.class
-
-    if (vtreeClass.indexOf("cycle-scope-" + scope) === -1) {
-      const c = (vtreeClass + " cycle-scope-" + scope).trim();
-      vtree.properties.attributes.class = c;
-    }
-    return vtree;
-  });
-}
-
 
 function makeEventsSelector(element$, runSA) {
   return function events(eventName) {
@@ -225,7 +205,7 @@ function makeElementSelector(rootEl$, runSA) {
       .reduce((prev, curr) => prev.concat(curr), [])
 
     })
-    //.doOnNext(x => console.log(x))
+    .remember()
 
     return {
       observable: element$,
@@ -235,24 +215,32 @@ function makeElementSelector(rootEl$, runSA) {
   }
 }
 
-function validateMapDOMDriverInput(vtree$) {
-  if (!vtree$ || typeof vtree$.subscribe !== `function`) {
-    throw new Error(`The DOM driver function expects as input an ` +
-      `Observable of virtual DOM elements`)
+function makeMapSelector(applied$, runSA) {
+  return function chooseMap(anchorId) {
+    //console.log(`choosing map: ${anchorId}`)
+    const mapDOM$ = applied$
+      .filter(vtree => getAnchorIdFromVTree(vtree) === anchorId)
+      .map(vtree => {
+        const anchor = document.getElementById(anchorId)
+        if (anchor) {
+          return getMapFromElement(anchor)
+        } else {
+          return null
+        }
+      })
+      .filter(x => !!x)
+      .remember()
+
+    return {
+      observable: mapDOM$,
+      select: makeElementSelector(mapDOM$, runSA)
+    }
   }
 }
 
-const noop = () => {}
-const noopListener = {
-  next: noop,
-  error: noop,
-  complete: noop
-}
 
 function makeMapDOMDriver(accessToken) {
   if (!accessToken || (typeof(accessToken) !== 'string' && !(accessToken instanceof String))) throw new Error(`MapDOMDriver requires an access token.`)
-
-  g_MBAccessToken = accessToken
 
   return function mapDomDriver(vtree$, runSA) {
 
@@ -264,21 +252,17 @@ function makeMapDOMDriver(accessToken) {
         .remember()
     }
 
-    var rootElem$ = renderRawRootElem$(adapted$).remember();
+    var applied$ = renderRawRootElem$(adapted$, accessToken).remember();
 
-
-    rootElem$.addListener(noopListener)
+    applied$.addListener(noopListener)
 
     return {
-      select: makeElementSelector(rootElem$, runSA),
-      dispose: noop,
-      isolateSource: isolateSource,
-      isolateSink: isolateSink
+      observable: applied$,
+      chooseMap: makeMapSelector(applied$, runSA)
     }
   }
 }
 
 export {
-  makeMapDOMDriver,
-  g_registeredElement
+  makeMapDOMDriver
 }

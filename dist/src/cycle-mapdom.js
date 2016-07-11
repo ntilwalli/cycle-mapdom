@@ -3,9 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.g_registeredElement = exports.makeMapDOMDriver = undefined;
-
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+exports.makeMapDOMDriver = undefined;
 
 var _xstream = require('xstream');
 
@@ -22,8 +20,6 @@ var _pairwise2 = _interopRequireDefault(_pairwise);
 var _virtualDom = require('virtual-dom');
 
 var _virtualMapdom = require('virtual-mapdom');
-
-var _transposition = require('./transposition');
 
 var _matchesSelector = require('matches-selector');
 
@@ -48,58 +44,69 @@ var VDOM = {
   patch: _virtualDom.patch
 };
 
-var g_MBAccessToken = void 0;
-var g_MBMapOptions = void 0;
+var noop = function noop() {};
+var noopListener = {
+  next: noop,
+  error: noop,
+  complete: noop
+};
 
-var g_registeredElement = void 0;
+var g_unanchoredLedger = {};
+//const g_anchoredLedger = {}
 
 function makeEmptyMapVDOMNode(options) {
   return new _virtualDom.VNode('map', { options: options });
 }
 
-function makeEmptyMapDOMElement() {
-  return document.createElement('map');
+function getAnchorIdFromVTree(vtree) {
+  return vtree.properties.anchorId;
 }
 
-// function Element(element) {
-//   const options = { zoomControl: false }
-//   const map = L.mapbox.map(element, null, options)
-//   element.mapDOM = makeEmptyMapDOMElement()
-//   element.mapDOM.instance = map
-// }
-
-function diffAndPatchToElement$(_ref) {
-  var _ref2 = _slicedToArray(_ref, 2);
-
-  var oldVTree = _ref2[0];
-  var newVTree = _ref2[1];
-
-  if (typeof newVTree === 'undefined') {
+function diffAndPatchToElement(vtree, accessToken) {
+  if (typeof vtree === 'undefined' || !vtree) {
     return undefined;
   }
 
-  // console.log("OldVTree")
-  // console.log(oldVTree)
-  // console.log("NewVTree")
-  // console.log(newVTree)
-  /* eslint-disable */
-
+  var newVTree = filterNonTruthyDescendants(vtree);
   var anchorId = getAnchorIdFromVTree(newVTree);
-  var mapDOM = (0, _virtualMapdom.getMapFromElement)(g_registeredElement);
-  var diffInfo = VDOM.diff(oldVTree, newVTree);
+  //console.log(anchorId)
+  var anchor = document.getElementById(anchorId);
+  //console.log(anchor)
+  if (!anchor) {
+    //console.log(`not anchored`)
+    g_unanchoredLedger[anchorId] = newVTree;
+    return null;
+  } else {
+    //console.log(`anchored`)
+    var mapDOM = (0, _virtualMapdom.getMapFromElement)(anchor);
 
-  // console.log("Diff old vs new VDOM tree...")
-  // console.log(diffInfo)
+    if (!mapDOM) {
+      //g_anchoredLedger[anchorId] = anchor
+      var initNode = makeEmptyMapVDOMNode(newVTree.properties.mapOptions || {});
+      (0, _virtualMapdom.createMapOnElement)(anchor, accessToken, initNode);
+      anchor.vtree = initNode;
+      mapDOM = (0, _virtualMapdom.getMapFromElement)(anchor);
+    }
 
-  var rootElem = VDOM.patch(mapDOM, diffInfo, { render: _virtualMapdom.render, patch: _virtualMapdom.patchRecursive });
+    var oldVTree = anchor.vtree;
 
-  /* eslint-enable */
+    // console.log("OldVTree")
+    // console.log(oldVTree)
+    // console.log("NewVTree")
+    // console.log(newVTree)
 
-  return mapDOM;
-}
+    var diffInfo = VDOM.diff(oldVTree, newVTree);
 
-function getAnchorIdFromVTree(vtree) {
-  return vtree.properties.anchorId;
+    // console.log("Diff old vs new VDOM tree...")
+    // console.log(diffInfo)
+
+    var rootElem = VDOM.patch(mapDOM, diffInfo, { render: _virtualMapdom.render, patch: _virtualMapdom.patchRecursive });
+
+    anchor.vtree = newVTree;
+    /* eslint-enable */
+
+    return newVTree;
+  }
 }
 
 function filterNonTruthyDescendants(vtree) {
@@ -113,21 +120,13 @@ function filterNonTruthyDescendants(vtree) {
   return vtree;
 }
 
-function makeRegulatedRawRootElem$(vtree$) {
+function renderRawRootElem$(vtree$, accessToken) {
 
-  var g_registeredAnchorId = void 0;
-
-  var anchorRegistration$ = vtree$.filter(function (vtree) {
-    return vtree;
-  }).map(function (vtree) {
-    //console.log(`Registering anchor`)
-    g_registeredAnchorId = getAnchorIdFromVTree(vtree);
-    return vtree;
+  var anchored$ = vtree$.map(function (vtree) {
+    return diffAndPatchToElement(vtree, accessToken);
   });
 
-  var mutationObserverConfig = { childList: true, subtree: true };
-
-  var elementRegistration$ = _xstream2.default.create({
+  var mutation$ = _xstream2.default.create({
     disposer: null,
     next: null,
     start: function start(listener) {
@@ -145,70 +144,48 @@ function makeRegulatedRawRootElem$(vtree$) {
     stop: function stop() {
       if (this.disposer) this.disposer();
     }
-  });
+  })
+  //.debug(x => console.log(`Hey`))
+  .map(function () {
+    var anchorId = void 0;
 
-  var regulation$ = _xstream2.default.merge(anchorRegistration$, elementRegistration$).map(function () {
-    return g_registeredAnchorId && document.getElementById(g_registeredAnchorId);
-  }).compose((0, _dropRepeats2.default)()).map(function (element) {
-    if (element) {
-      exports.g_registeredElement = g_registeredElement = element;
-      //console.log(`Found anchor element`)
-      //createMapOnElement(g_registeredElement, g_MBAccessToken, makeEmptyMapVDOMNode(g_MBMapOptions))
-      return true;
-    } else {
-      if (g_registeredElement) {
-        if ((0, _virtualMapdom.getMapFromElement)(g_registeredElement)) {
-          //console.log(`Removing map`)
-          (0, _virtualMapdom.removeMapFromElement)(g_registeredElement);
-        }
+    // for (anchorId in g_anchoredLedger) {
+    //   //console.log(`testing anchored`)
+    //   const anchor = document.getElementById(anchorId)
+    //   //console.log(`Hey`)
+    //   if (!anchor) {
+    //     //console.log(`saw anchored, removing`)
+    //     removeMapFromElement(anchor)
+    //     delete g_anchoredLedger[anchorId]
+    //   }
+    // }
 
-        //console.log(`Unregistering anchor`)
-        exports.g_registeredElement = g_registeredElement = undefined;
+    //return xs.never()
+
+    var buffer = [];
+    for (anchorId in g_unanchoredLedger) {
+      //console.log(`testing unanchored`)
+      //console.log(`anchorId: ${anchorId}`)
+      var anchor = document.getElementById(anchorId);
+      var _buffer = [];
+      if (anchor) {
+        //console.log(`saw unanchored, adding`)
+        var vtree = diffAndPatchToElement(g_unanchoredLedger[anchorId], accessToken);
+        delete g_unanchoredLedger[anchorId];
+        _buffer.push(vtree);
       }
-      return false;
     }
-  }).map(function (anchorAvailable) {
-    //console.log(`anchorAvailable: ${anchorAvailable}`)
-    if (anchorAvailable) {
-      return vtree$.map(filterNonTruthyDescendants).map(function (vtree) {
-        if (!(0, _virtualMapdom.getMapFromElement)(g_registeredElement)) {
-          var initNode = makeEmptyMapVDOMNode(vtree.properties.mapOptions);
-          (0, _virtualMapdom.createMapOnElement)(g_registeredElement, g_MBAccessToken, initNode);
-
-          return _xstream2.default.of(initNode, vtree);
-        } else {
-          return _xstream2.default.of(vtree);
-        }
-      }).flatten().compose(_pairwise2.default).map(diffAndPatchToElement$).filter(function (x) {
-        return !!x;
-      });
+    //return xs.never()
+    //
+    if (buffer.length) {
+      return _xstream2.default.of.apply(_xstream2.default, buffer);
     } else {
       return _xstream2.default.never();
     }
   }).flatten();
 
-  return regulation$;
-}
-
-function renderRawRootElem$(vtree$) {
-  return makeRegulatedRawRootElem$(vtree$);
-}
-
-function isolateSource(source, scope) {
-  return source.select(".cycle-scope-" + scope);
-}
-
-function isolateSink(sink, scope) {
-  return sink.map(function (vtree) {
-    vtree.properties = vtree.properties || {};
-    vtree.properties.attributes = vtree.properties.attributes || {};
-    var vtreeClass = vtree.properties.attributes.class === undefined ? '' : vtree.properties.attributes.class;
-
-    if (vtreeClass.indexOf("cycle-scope-" + scope) === -1) {
-      var c = (vtreeClass + " cycle-scope-" + scope).trim();
-      vtree.properties.attributes.class = c;
-    }
-    return vtree;
+  return _xstream2.default.merge(anchored$, mutation$).filter(function (x) {
+    return !!x;
   });
 }
 
@@ -252,8 +229,7 @@ function makeElementSelector(rootEl$, runSA) {
       }).reduce(function (prev, curr) {
         return prev.concat(curr);
       }, []);
-    });
-    //.doOnNext(x => console.log(x))
+    }).remember();
 
     return {
       observable: element$,
@@ -263,24 +239,31 @@ function makeElementSelector(rootEl$, runSA) {
   };
 }
 
-function validateMapDOMDriverInput(vtree$) {
-  if (!vtree$ || typeof vtree$.subscribe !== 'function') {
-    throw new Error('The DOM driver function expects as input an ' + 'Observable of virtual DOM elements');
-  }
+function makeMapSelector(applied$, runSA) {
+  return function chooseMap(anchorId) {
+    //console.log(`choosing map: ${anchorId}`)
+    var mapDOM$ = applied$.filter(function (vtree) {
+      return getAnchorIdFromVTree(vtree) === anchorId;
+    }).map(function (vtree) {
+      var anchor = document.getElementById(anchorId);
+      if (anchor) {
+        return (0, _virtualMapdom.getMapFromElement)(anchor);
+      } else {
+        return null;
+      }
+    }).filter(function (x) {
+      return !!x;
+    }).remember();
+
+    return {
+      observable: mapDOM$,
+      select: makeElementSelector(mapDOM$, runSA)
+    };
+  };
 }
 
-var noop = function noop() {};
-var noopListener = {
-  next: noop,
-  error: noop,
-  complete: noop
-};
-
-function makeMapDOMDriver(accessToken, options) {
+function makeMapDOMDriver(accessToken) {
   if (!accessToken || typeof accessToken !== 'string' && !(accessToken instanceof String)) throw new Error('MapDOMDriver requires an access token.');
-
-  g_MBAccessToken = accessToken;
-  g_MBMapOptions = options || {};
 
   return function mapDomDriver(vtree$, runSA) {
 
@@ -291,18 +274,15 @@ function makeMapDOMDriver(accessToken, options) {
       adapted$ = vtree$.remember();
     }
 
-    var rootElem$ = renderRawRootElem$(adapted$).remember();
+    var applied$ = renderRawRootElem$(adapted$, accessToken).remember();
 
-    rootElem$.addListener(noopListener);
+    applied$.addListener(noopListener);
 
     return {
-      select: makeElementSelector(rootElem$, runSA),
-      dispose: noop,
-      isolateSource: isolateSource,
-      isolateSink: isolateSink
+      observable: applied$,
+      chooseMap: makeMapSelector(applied$, runSA)
     };
   };
 }
 
 exports.makeMapDOMDriver = makeMapDOMDriver;
-exports.g_registeredElement = g_registeredElement;
