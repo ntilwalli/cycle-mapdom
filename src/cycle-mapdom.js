@@ -140,7 +140,6 @@ function renderRawRootElem$(vtree$, accessToken) {
       //console.log(`testing unanchored`)
       //console.log(`anchorId: ${anchorId}`)
       const anchor = document.getElementById(anchorId)
-      const buffer = []
       if (anchor) {
         //console.log(`saw unanchored, adding`)
         const vtree = diffAndPatchToElement(g_unanchoredLedger[anchorId], accessToken)

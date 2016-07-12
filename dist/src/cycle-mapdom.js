@@ -167,12 +167,11 @@ function renderRawRootElem$(vtree$, accessToken) {
       //console.log(`testing unanchored`)
       //console.log(`anchorId: ${anchorId}`)
       var anchor = document.getElementById(anchorId);
-      var _buffer = [];
       if (anchor) {
         //console.log(`saw unanchored, adding`)
         var vtree = diffAndPatchToElement(g_unanchoredLedger[anchorId], accessToken);
         delete g_unanchoredLedger[anchorId];
-        _buffer.push(vtree);
+        buffer.push(vtree);
       }
     }
     //return xs.never()
