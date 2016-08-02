@@ -231,7 +231,7 @@ function makeElementSelector(rootEl$, runSA) {
     }).remember();
 
     return {
-      observable: element$,
+      observable: runSA ? runSA.adapt(element$, _xstreamAdapter2.default.streamSubscribe) : element$,
       select: makeElementSelector(element$, runSA),
       events: makeEventsSelector(element$, runSA)
     };
@@ -255,7 +255,7 @@ function makeMapSelector(applied$, runSA) {
     }).remember();
 
     return {
-      observable: mapDOM$,
+      observable: runSA ? runSA.adapt(mapDOM$, _xstreamAdapter2.default.streamSubscribe) : mapDOM$,
       select: makeElementSelector(mapDOM$, runSA)
     };
   };
@@ -264,11 +264,11 @@ function makeMapSelector(applied$, runSA) {
 function makeMapDOMDriver(accessToken) {
   if (!accessToken || typeof accessToken !== 'string' && !(accessToken instanceof String)) throw new Error('MapDOMDriver requires an access token.');
 
-  return function mapDomDriver(vtree$, runSA) {
+  function mapDomDriver(vtree$, runSA) {
 
     var adapted$ = void 0;
     if (runSA) {
-      adapted$ = runSA.remember(runSA.adapt(vtree$, _xstreamAdapter2.default.streamSubscribe));
+      adapted$ = _xstreamAdapter2.default.adapt(vtree$, runSA.streamSubscribe).remember();
     } else {
       adapted$ = vtree$.remember();
     }
@@ -278,10 +278,13 @@ function makeMapDOMDriver(accessToken) {
     applied$.addListener(noopListener);
 
     return {
-      observable: applied$,
+      observable: runSA ? runSA.adapt(applied$, _xstreamAdapter2.default.streamSubscribe) : applied$,
       chooseMap: makeMapSelector(applied$, runSA)
     };
-  };
+  }
+
+  mapDOMDriver.stremAdapter = _xstreamAdapter2.default;
+  return mapDOMDriver;
 }
 
 exports.makeMapDOMDriver = makeMapDOMDriver;
