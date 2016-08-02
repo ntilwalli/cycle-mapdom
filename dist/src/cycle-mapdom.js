@@ -264,7 +264,7 @@ function makeMapSelector(applied$, runSA) {
 function makeMapDOMDriver(accessToken) {
   if (!accessToken || typeof accessToken !== 'string' && !(accessToken instanceof String)) throw new Error('MapDOMDriver requires an access token.');
 
-  function mapDomDriver(vtree$, runSA) {
+  function mapDOMDriver(vtree$, runSA) {
 
     var adapted$ = void 0;
     if (runSA) {
