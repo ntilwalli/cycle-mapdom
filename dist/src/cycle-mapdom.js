@@ -25,10 +25,6 @@ var _matchesSelector = require('matches-selector');
 
 var _matchesSelector2 = _interopRequireDefault(_matchesSelector);
 
-var _xIsArray = require('x-is-array');
-
-var _xIsArray2 = _interopRequireDefault(_xIsArray);
-
 var _fromevent = require('./fromevent');
 
 var _fromevent2 = _interopRequireDefault(_fromevent);
@@ -217,7 +213,7 @@ function makeElementSelector(rootEl$, runSA) {
     var element$ = selector.trim() === ':root' ? rootEl$ : rootEl$.map(function (x) {
       //console.log("Reselecting elements: ", selector);
 
-      var array = (0, _xIsArray2.default)(x) ? x : [x];
+      var array = Array.isArray(x) ? x : [x];
       return array.map(function (element) {
         if ((0, _matchesSelector2.default)(element, trimmedSelector)) {
           return [element];

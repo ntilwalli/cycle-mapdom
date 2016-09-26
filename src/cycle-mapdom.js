@@ -5,7 +5,6 @@ import {VNode, diff, patch} from 'virtual-dom'
 import {createMapOnElement, removeMapFromElement, getMapFromElement, patchRecursive, render} from 'virtual-mapdom'
 
 import matchesSelector from 'matches-selector'
-import isArray from 'x-is-array'
 import fromEvent from './fromevent'
 
 import xstreamSA from '@cycle/xstream-adapter'
@@ -192,7 +191,7 @@ function makeElementSelector(rootEl$, runSA) {
     let element$ = selector.trim() === `:root` ? rootEl$ : rootEl$.map(x => {
       //console.log("Reselecting elements: ", selector);
 
-      let array = isArray(x) ? x : [x]
+      let array = Array.isArray(x) ? x : [x]
       return array.map(element => {
         if (matchesSelector(element, trimmedSelector)) {
           return [element]

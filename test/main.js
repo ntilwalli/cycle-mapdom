@@ -100,8 +100,12 @@ test("call to selectMap, select, events returns expected objects", t => {
         t.ok(y.instance, "element should have in attached instance property")
       })
     },
-    error: () => {},
-    complete: () => {}
+    error: (e) => {
+      console.log(e)
+    },
+    complete: () => {
+      console.log(`complete`)
+    }
   })
   //.publish().refCount().subscribe()
 })
