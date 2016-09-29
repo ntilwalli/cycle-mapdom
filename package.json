@@ -1,6 +1,6 @@
 {
   "name": "cycle-mapdom",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "CycleJS driver for virtual-mapdom",
   "main": "./dist/index.js",
   "scripts": {
@@ -27,7 +27,7 @@
     "@cycle/xstream-adapter": "^3.0.3",
     "matches-selector": "^1.0.0",
     "virtual-dom": "^2.1.1",
-    "virtual-mapdom": "^1.0.2",
+    "virtual-mapdom": "^1.0.3",
     "xstream": "^6.4.0"
   },
   "peerDependencies": {
